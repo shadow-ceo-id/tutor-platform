@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajarin — Cari Tutor Terpercaya, Datang ke Rumah</title>
+<meta name="description" content="Ajarin membantu kamu menemukan tutor terverifikasi — akademik, musik, olahraga, sampai skill lainnya — datang langsung ke rumah, dengan garansi ganti tutor.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F2A26;
+    --ink-soft:#2A423D;
+    --paper:#FAF8F2;
+    --paper-alt:#F1ECDE;
+    --marigold:#F2A63D;
+    --marigold-deep:#D98A22;
+    --teal:#1F8A76;
+    --muted:#5B6B66;
+    --line:#E4DFD1;
+    --white:#FFFFFF;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  h1,h2,h3,.display{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    letter-spacing:-0.02em;
+    color:var(--ink);
+  }
+  .mono{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:500;
+    letter-spacing:0.02em;
+    text-transform:uppercase;
+    font-size:0.72rem;
+  }
+  a{color:inherit;text-decoration:none;}
+  img{max-width:100%;display:block;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+
+  /* ===== NAV ===== */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(250,248,242,0.88);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  nav{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 24px;max-width:1120px;margin:0 auto;
+  }
+  .logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.35rem;color:var(--ink);}
+  .logo span{color:var(--marigold-deep);}
+  .nav-links{display:flex;align-items:center;gap:32px;}
+  .nav-links a{font-size:0.94rem;font-weight:500;color:var(--ink-soft);}
+  .nav-links a:hover{color:var(--marigold-deep);}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:12px 22px;border-radius:999px;font-weight:600;font-size:0.94rem;
+    border:1.5px solid transparent;cursor:pointer;transition:transform .15s ease, box-shadow .15s ease;
+    white-space:nowrap;
+  }
+  .btn:hover{transform:translateY(-2px);}
+  .btn:focus-visible{outline:3px solid var(--teal);outline-offset:2px;}
+  .btn-primary{background:var(--ink);color:var(--paper);}
+  .btn-primary:hover{box-shadow:0 10px 24px -8px rgba(15,42,38,0.45);}
+  .btn-accent{background:var(--marigold);color:var(--ink);}
+  .btn-accent:hover{box-shadow:0 10px 24px -8px rgba(217,138,34,0.55);}
+  .btn-ghost{background:transparent;border-color:var(--ink);color:var(--ink);}
+  .btn-ghost:hover{background:var(--ink);color:var(--paper);}
+  .btn-sm{padding:9px 16px;font-size:0.85rem;}
+  .nav-cta{display:none;}
+  @media(min-width:760px){.nav-cta{display:inline-flex;}}
+  .nav-links{display:none;}
+  @media(min-width:760px){.nav-links{display:flex;}}
+
+  /* ===== HERO ===== */
+  .hero{padding:72px 0 56px;}
+  .hero-grid{display:grid;gap:48px;align-items:center;}
+  @media(min-width:900px){.hero-grid{grid-template-columns:1.05fr 0.95fr;gap:40px;}}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    color:var(--teal);margin-bottom:18px;
+  }
+  .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--teal);}
+  .hero h1{font-size:clamp(2.3rem,5vw,3.4rem);line-height:1.06;margin-bottom:20px;}
+  .hero h1 .accent{color:var(--marigold-deep);}
+  .hero p.lead{font-size:1.14rem;color:var(--ink-soft);max-width:46ch;margin-bottom:32px;}
+  .hero-actions{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:28px;}
+  .hero-note{font-size:0.86rem;color:var(--muted);}
+
+  /* ---- ticket signature ---- */
+  .ticket{
+    position:relative;background:var(--white);
+    border-radius:18px;border:1px solid var(--line);
+    box-shadow:0 30px 60px -30px rgba(15,42,38,0.28);
+    padding:26px 24px;transform:rotate(1.2deg);
+  }
+  .ticket::before,.ticket::after{
+    content:"";position:absolute;width:26px;height:26px;
+    background:var(--paper);border:1px solid var(--line);border-radius:50%;
+    top:50%;transform:translateY(-50%);
+  }
+  .ticket::before{left:-13px;}
+  .ticket::after{right:-13px;}
+  .ticket-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
+  .ticket-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    background:rgba(31,138,118,0.1);color:var(--teal);
+    padding:6px 12px;border-radius:999px;font-size:0.72rem;
+    font-family:'IBM Plex Mono',monospace;font-weight:500;
+  }
+  .ticket-badge svg{width:13px;height:13px;}
+  .ticket-id{color:var(--muted);font-size:0.72rem;}
+  .ticket-subject{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.5rem;margin-bottom:4px;}
+  .ticket-tutor{color:var(--muted);font-size:0.92rem;margin-bottom:20px;}
+  .ticket-divider{
+    border-top:1.5px dashed var(--line);margin:0 0 18px;
+  }
+  .ticket-meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .ticket-meta div .mono{color:var(--muted);display:block;margin-bottom:4px;}
+  .ticket-meta div strong{font-size:0.98rem;font-weight:600;}
+  .ticket-foot{
+    margin-top:22px;padding-top:18px;border-top:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .stars{color:var(--marigold-deep);font-size:0.9rem;letter-spacing:2px;}
+  .ticket-price{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.05rem;}
+
+  /* ===== TRUST BAR ===== */
+  .trust{
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    background:var(--paper-alt);
+  }
+  .trust-inner{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:22px;
+    padding:26px 24px;max-width:1120px;margin:0 auto;
+  }
+  @media(min-width:760px){.trust-inner{grid-template-columns:repeat(4,1fr);}}
+  .trust-item{display:flex;align-items:center;gap:10px;font-size:0.88rem;font-weight:500;color:var(--ink-soft);}
+  .trust-item svg{flex-shrink:0;width:20px;height:20px;color:var(--teal);}
+
+  /* ===== SECTION HEADER ===== */
+  section{padding:88px 0;}
+  .section-head{max-width:640px;margin-bottom:52px;}
+  .section-head .mono{color:var(--marigold-deep);display:block;margin-bottom:10px;}
+  .section-head h2{font-size:clamp(1.7rem,3.4vw,2.4rem);margin-bottom:14px;}
+  .section-head p{color:var(--muted);font-size:1.03rem;}
+
+  /* ===== HOW IT WORKS ===== */
+  .steps{display:grid;gap:20px;}
+  @media(min-width:760px){.steps{grid-template-columns:repeat(3,1fr);}}
+  .step{
+    background:var(--white);border:1px solid var(--line);border-radius:var(--radius);
+    padding:28px 24px;position:relative;
+  }
+  .step .num{
+    font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--teal);
+    margin-bottom:16px;display:block;
+  }
+  .step h3{font-size:1.12rem;margin-bottom:10px;}
+  .step p{color:var(--muted);font-size:0.94rem;}
+  .step-arrow{display:none;color:var(--line);}
+  @media(min-width:760px){
+    .steps{position:relative;}
+  }
+
+  /* ===== TWO PATHS ===== */
+  .paths{display:grid;gap:24px;}
+  @media(min-width:820px){.paths{grid-template-columns:1fr 1fr;}}
+  .path-card{
+    border-radius:20px;padding:36px 32px;position:relative;overflow:hidden;
+  }
+  .path-parent{background:var(--ink);color:var(--paper);}
+  .path-tutor{background:var(--white);border:1px solid var(--line);color:var(--ink);}
+  .path-card .mono{display:block;margin-bottom:14px;opacity:0.75;}
+  .path-parent .mono{color:var(--marigold);}
+  .path-tutor .mono{color:var(--teal);}
+  .path-card h3{font-size:1.5rem;margin-bottom:14px;}
+  .path-parent h3{color:var(--paper);}
+  .path-list{list-style:none;margin:22px 0 30px;display:grid;gap:12px;}
+  .path-list li{display:flex;gap:10px;align-items:flex-start;font-size:0.95rem;}
+  .path-parent .path-list{color:rgba(250,248,242,0.85);}
+  .path-tutor .path-list{color:var(--ink-soft);}
+  .path-list svg{flex-shrink:0;width:18px;height:18px;margin-top:2px;}
+  .path-parent .path-list svg{color:var(--marigold);}
+  .path-tutor .path-list svg{color:var(--teal);}
+
+  /* ===== CATEGORIES ===== */
+  .chips{display:flex;flex-wrap:wrap;gap:10px;}
+  .chip{
+    background:var(--white);border:1px solid var(--line);
+    padding:10px 18px;border-radius:999px;font-size:0.9rem;font-weight:500;color:var(--ink-soft);
+  }
+  .chip.more{background:var(--paper-alt);border-style:dashed;color:var(--muted);}
+  .area-note{
+    margin-top:28px;display:flex;align-items:center;gap:10px;
+    font-size:0.9rem;color:var(--muted);
+  }
+  .area-note svg{width:18px;height:18px;color:var(--teal);flex-shrink:0;}
+
+  /* ===== FINAL CTA ===== */
+  .final-cta{
+    background:var(--ink);border-radius:24px;padding:56px 40px;text-align:center;
+    max-width:1120px;margin:0 auto;
+  }
+  .final-cta h2{color:var(--paper);font-size:clamp(1.7rem,3.6vw,2.5rem);margin-bottom:16px;}
+  .final-cta p{color:rgba(250,248,242,0.75);max-width:44ch;margin:0 auto 32px;}
+  .final-actions{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;}
+
+  /* ===== FOOTER ===== */
+  footer{border-top:1px solid var(--line);padding:44px 0 32px;}
+  .footer-grid{display:flex;flex-wrap:wrap;justify-content:space-between;gap:24px;margin-bottom:28px;}
+  .footer-brand .logo{margin-bottom:8px;}
+  .footer-brand p{color:var(--muted);font-size:0.9rem;max-width:34ch;}
+  .footer-contact{font-size:0.9rem;color:var(--ink-soft);}
+  .footer-contact a{color:var(--teal);font-weight:600;}
+  .footer-fine{
+    padding-top:24px;border-top:1px solid var(--line);
+    font-size:0.82rem;color:var(--muted);
+  }
+
+  /* chat widget placeholder (Tahap 2) */
+  .chat-fab{
+    position:fixed;bottom:22px;right:22px;z-index:60;
+    width:56px;height:56px;border-radius:50%;
+    background:var(--marigold);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 12px 28px -8px rgba(217,138,34,0.6);
+    border:none;cursor:pointer;
+  }
+  .chat-fab svg{width:24px;height:24px;}
+</style>
+</head>
+<body>
+
+<header>
+  <nav>
+    <a href="#top" class="logo">Ajarin<span>.</span></a>
+    <div class="nav-links">
+      <a href="#cara-kerja">Cara Kerja</a>
+      <a href="#untuk-siapa">Untuk Siapa</a>
+      <a href="#kategori">Kategori</a>
+    </div>
+    <a href="#cari" class="btn btn-primary btn-sm nav-cta">Mulai Sekarang</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero" style="padding-top:56px;">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow mono">Kudus Kota &amp; sekitarnya</span>
+        <h1>Butuh yang jago?<br><span class="accent">Ajarin aja.</span></h1>
+        <p class="lead">Temukan tutor terverifikasi untuk akademik, musik, olahraga, sampai skill lainnya — datang langsung ke tempatmu, dengan garansi ganti kalau kurang cocok.</p>
+        <div class="hero-actions">
+          <a href="#cari" class="btn btn-accent">Saya Cari Tutor</a>
+          <a href="#tutor" class="btn btn-ghost">Saya Mau Jadi Tutor</a>
+        </div>
+        <p class="hero-note">Trial pertama mulai Rp49.000 · Bisa privat atau kelompok kecil</p>
+      </div>
+
+      <div class="ticket">
+        <div class="ticket-top">
+          <span class="ticket-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+            Tutor Terverifikasi
+          </span>
+          <span class="ticket-id mono">#AJR-2214</span>
+        </div>
+        <div class="ticket-subject">Matematika SD</div>
+        <div class="ticket-tutor">bersama Kak Nadia · Rating 4.9</div>
+        <div class="ticket-divider"></div>
+        <div class="ticket-meta">
+          <div><span class="mono">Jadwal</span><strong>Selasa, 16.00</strong></div>
+          <div><span class="mono">Lokasi</span><strong>Demangan, Kudus</strong></div>
+          <div><span class="mono">Durasi</span><strong>60 menit</strong></div>
+          <div><span class="mono">Mode</span><strong>Datang ke rumah</strong></div>
+        </div>
+        <div class="ticket-foot">
+          <span class="stars">★★★★★</span>
+          <span class="ticket-price">Rp75.000</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST BAR -->
+  <div class="trust">
+    <div class="trust-inner">
+      <div class="trust-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
+        Tutor terverifikasi
+      </div>
+      <div class="trust-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 2v4M16 2v4M4 10h16"/></svg>
+        Laporan tiap sesi
+      </div>
+      <div class="trust-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4M3 12v-2a4 4 0 014-4h14M7 22l-4-4 4-4M21 12v2a4 4 0 01-4 4H3"/></svg>
+        Garansi ganti tutor
+      </div>
+      <div class="trust-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        Bayar aman lewat Ajarin
+      </div>
+    </div>
+  </div>
+
+  <!-- CARA KERJA -->
+  <section id="cara-kerja">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="mono">Cara Kerja</span>
+        <h2>Tiga langkah, dari kebutuhan sampai sesi belajar</h2>
+        <p>Nggak perlu bolak-balik cari sendiri. Ceritakan kebutuhanmu, sisanya kami bantu.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <span class="num">01 / Ceritakan kebutuhan</span>
+          <h3>Kelas, mapel atau skill, lokasi, dan jadwal</h3>
+          <p>Chat singkat atau isi form — kami tanya yang penting aja biar cepat dicariin tutornya.</p>
+        </div>
+        <div class="step">
+          <span class="num">02 / Kami carikan yang cocok</span>
+          <h3>Dari tutor terseleksi di area kamu</h3>
+          <p>Setiap tutor sudah lewat wawancara dan microteaching sebelum masuk database Ajarin.</p>
+        </div>
+        <div class="step">
+          <span class="num">03 / Coba, lanjut, atau ganti</span>
+          <h3>Trial dulu, baru putuskan</h3>
+          <p>Kalau nggak cocok, tinggal minta ganti — tanpa drama, tanpa cari dari nol lagi.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- UNTUK SIAPA -->
+  <section id="untuk-siapa" style="padding-top:0;">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="mono">Untuk Siapa</span>
+        <h2>Dua pintu, satu platform</h2>
+      </div>
+      <div class="paths">
+        <div class="path-card path-parent" id="cari">
+          <span class="mono">Untuk yang cari tutor</span>
+          <h3>Belajar jadi lebih terarah</h3>
+          <ul class="path-list">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Tutor sudah diverifikasi dan diwawancara</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Laporan belajar setiap selesai sesi</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Garansi ganti tutor kalau kurang cocok</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Pembayaran aman lewat Ajarin, bukan tunai langsung</li>
+          </ul>
+          <a href="https://wa.me/6281575143612?text=Halo%20Ajarin%2C%20saya%20mau%20cari%20tutor" class="btn btn-accent">Cari Tutor Sekarang</a>
+        </div>
+        <div class="path-card path-tutor" id="tutor">
+          <span class="mono">Untuk yang mau jadi tutor</span>
+          <h3>Mengajar tanpa cari murid sendiri</h3>
+          <ul class="path-list">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Murid datang lewat sistem, bukan promosi sendiri</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Honor jelas dan dibayar tepat waktu</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Jadwal dan lokasi disesuaikan domisili kamu</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Bisa naik jenjang jadi Tutor Senior</li>
+          </ul>
+          <a href="https://wa.me/6281575143612?text=Halo%20Ajarin%2C%20saya%20mau%20daftar%20jadi%20tutor" class="btn btn-ghost">Daftar Jadi Tutor</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KATEGORI -->
+  <section id="kategori" style="padding-top:0;">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="mono">Kategori</span>
+        <h2>Belajar apa aja, satu platform</h2>
+        <p>Mulai dari akademik dulu — kategori lain terus dibuka seiring tutornya bertambah.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">SD &amp; SMP</span>
+        <span class="chip">Matematika</span>
+        <span class="chip">Bahasa Inggris</span>
+        <span class="chip">Calistung</span>
+        <span class="chip">Mengaji &amp; Pegon</span>
+        <span class="chip">Musik</span>
+        <span class="chip">Olahraga</span>
+        <span class="chip more">+ Skill lainnya, segera</span>
+      </div>
+      <div class="area-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Saat ini melayani Demangan, Kudus Kota, dan sekitarnya — area lain menyusul.
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section>
+    <div class="wrap">
+      <div class="final-cta">
+        <h2>Siap mulai belajar bareng yang jago?</h2>
+        <p>Ceritakan kebutuhanmu lewat WhatsApp, kami bantu carikan tutor yang cocok dalam waktu singkat.</p>
+        <div class="final-actions">
+          <a href="https://wa.me/6281575143612?text=Halo%20Ajarin%2C%20saya%20mau%20cari%20tutor" class="btn btn-accent">Saya Cari Tutor</a>
+          <a href="https://wa.me/6281575143612?text=Halo%20Ajarin%2C%20saya%20mau%20daftar%20jadi%20tutor" class="btn btn-primary" style="background:transparent;border:1.5px solid rgba(250,248,242,0.4);color:var(--paper);">Saya Mau Jadi Tutor</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo">Ajarin<span>.</span></div>
+        <p>Platform mencari dan memesan tutor terverifikasi yang datang langsung ke tempatmu.</p>
+      </div>
+      <div class="footer-contact">
+        WhatsApp Admin<br>
+        <a href="https://wa.me/6281575143612">0815-7514-3612</a>
+      </div>
+    </div>
+    <div class="footer-fine">
+      © 2026 Ajarin. Masih tahap awal — dijalankan langsung oleh tim kecil biar kualitas tutor tetap terjaga.
+    </div>
+  </div>
+</footer>
+
+<!-- Placeholder tombol chat — akan diaktifkan di Tahap 2 dengan AI chatbot -->
+<button class="chat-fab" aria-label="Chat dengan Ajarin" onclick="window.open('https://wa.me/6281575143612','_blank')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 01-8.5 8.5c-1.35 0-2.6-.32-3.7-.9L3 21l1.9-5.7A8.4 8.4 0 013.5 11.5 8.5 8.5 0 0112 3a8.5 8.5 0 019 8.5z"/></svg>
+</button>
+
+</body>
+</html>
