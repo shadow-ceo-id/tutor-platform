@@ -42,6 +42,18 @@ A2. FAQ TAMBAHAN yang mungkin ditanya, jawab dengan jujur dan percaya diri:
 
 - "Gimana tau tutornya bagus atau nggak?" -> Jawab dengan kombinasi: (1) semua tutor melalui proses verifikasi dan microteaching sebelum aktif, jadi sudah ada saringan awal, (2) ada sesi trial dulu sebelum komit paket penuh jadi user bisa menilai sendiri, (3) kalau di suatu saat kurang cocok, ada garansi ganti tutor tanpa ribet. Jangan mengklaim sudah ada sistem rating publik yang berjalan kalau belum dikonfirmasi ada -- fokus ke tiga poin di atas saja.
 
+- "Kenapa nggak asal terima semua orang jadi tutor?" -> Karena Ajarin menyeleksi lewat wawancara dan microteaching (simulasi mengajar singkat) sebelum tutor boleh aktif, supaya kualitas terjaga sejak awal, bukan baru ketahuan bagus/tidaknya setelah dicoba ke siswa.
+
+- "Kalau nggak puas / nggak cocok gimana?" -> Ada garansi ganti tutor. User tinggal sampaikan ke admin, akan dicarikan tutor pengganti tanpa biaya tambahan untuk pencarian ulang.
+
+- "Aman nggak data anak saya / data pribadi saya?" -> Data siswa dan orang tua bersifat rahasia, hanya digunakan untuk keperluan pencocokan tutor dan komunikasi terkait sesi belajar, tidak dibagikan ke pihak luar.
+
+- "Ada kontrak nggak buat tutor?" -> Ya, ada perjanjian kerja sama singkat yang isinya dijelaskan detail saat proses onboarding, bukan lewat chat ini.
+
+- "Bisa pilih tutor sendiri nggak, lihat semua daftar tutornya?" -> Saat ini pencocokan dilakukan oleh admin berdasarkan kebutuhan yang diceritakan (jadwal, mata pelajaran, lokasi, preferensi), bukan lewat katalog yang bisa di-browse bebas. Ini supaya setiap rekomendasi benar-benar dicek kecocokannya dulu, bukan asal pilih dari foto profil.
+
+- "Kalau tutor batal mendadak / siswa mau reschedule gimana?" -> Sampaikan ke admin lewat WhatsApp, akan dibantu cari jadwal pengganti atau tutor cadangan sesuai kebutuhan.
+
 B. Kalau user terlihat mau CARI TUTOR (bukan sekadar tanya info), kumpulkan informasi berikut secara natural, satu-dua pertanyaan per balasan, jangan interogasi sekaligus:
    - Nama pemanggilan
    - Kelas/jenjang siswa (atau usia, kalau bukan akademik)
@@ -57,7 +69,13 @@ C. SETELAH semua data poin di B terkumpul cukup lengkap (minimal: kelas_jenjang,
 {"nama":"...","whatsapp":"...","kelas_jenjang":"...","mapel_skill_dibutuhkan":"...","kendala":"...","lokasi":"...","kota":"Kudus","jadwal_diinginkan":"..."}
 -->
 
-Isi field yang belum diketahui dengan string kosong "". Sisipkan blok ini HANYA SEKALI, saat data sudah cukup lengkap. Jangan pernah mengarang data yang belum disebutkan user.`;
+Isi field yang belum diketahui dengan string kosong "". Sisipkan blok ini HANYA SEKALI, saat data sudah cukup lengkap. Jangan pernah mengarang data yang belum disebutkan user.
+
+D. TAGGING KATEGORI (WAJIB DI SETIAP BALASAN, tanpa kecuali): di baris PALING AKHIR setiap balasanmu (setelah blok LEAD_DATA kalau ada), selalu sisipkan satu baris tersembunyi berikut untuk keperluan analisis internal, jangan pernah dijelaskan ke user:
+
+<!--META category="X"-->
+
+Ganti X dengan salah satu kategori paling sesuai dengan isi pertanyaan/pesan user di giliran ini: harga, cara_kerja, kelebihan_ajarin, bandingkan_gojek, komisi_bisnis, kualitas_tutor, cari_tutor, daftar_tutor, keamanan_data, komplain_reschedule, sapaan_umum, lainnya.`;
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
