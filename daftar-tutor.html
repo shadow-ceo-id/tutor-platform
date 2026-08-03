@@ -62,25 +62,25 @@
 </style>
 </head>
 <body>
-
+ 
 <header>
   <div class="wrap">
     <a href="index.html" class="logo">Ajarin<span>.</span></a>
   </div>
 </header>
-
+ 
 <main>
   <div class="wrap">
-
+ 
     <div id="formSection">
       <span class="eyebrow mono">Founding Tutor — Batch 1</span>
       <h1>Daftar jadi tutor Ajarin</h1>
       <p class="lead">Isi data di bawah ini. Setelah masuk, tim kami akan menghubungi kamu via WhatsApp untuk proses verifikasi dan wawancara singkat.</p>
-
+ 
       <div id="statusMsg" class="status-msg"></div>
-
+ 
       <form id="tutorForm">
-
+ 
         <fieldset>
           <legend>Identitas</legend>
           <div class="field">
@@ -96,15 +96,29 @@
             <input type="email" id="email" name="email">
           </div>
           <div class="field">
-            <label for="domisili">Alamat domisili</label>
-            <input type="text" id="domisili" name="domisili" required>
+            <label for="alamat_detail">Alamat lengkap (jalan, no rumah, RT/RW)</label>
+            <input type="text" id="alamat_detail" name="alamat_detail" required>
           </div>
           <div class="field">
-            <label for="kecamatan">Kecamatan</label>
-            <input type="text" id="kecamatan" name="kecamatan" required>
+            <label for="domisiliProvinsi">Provinsi domisili</label>
+            <select id="domisiliProvinsi" required>
+              <option value="">Memuat daftar provinsi...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="domisiliKota">Kota / Kabupaten domisili</label>
+            <select id="domisiliKota" required disabled>
+              <option value="">Pilih provinsi dulu</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="domisiliKecamatan">Kecamatan domisili</label>
+            <select id="domisiliKecamatan" required disabled>
+              <option value="">Pilih kota/kabupaten dulu</option>
+            </select>
           </div>
         </fieldset>
-
+ 
         <fieldset>
           <legend>Latar belakang</legend>
           <div class="field">
@@ -127,7 +141,7 @@
             <textarea id="pengalaman_mengajar" name="pengalaman_mengajar" placeholder="Ceritakan singkat pengalaman mengajar kamu (boleh belum ada pengalaman formal)"></textarea>
           </div>
         </fieldset>
-
+ 
         <fieldset>
           <legend>Jenjang & bidang yang bisa diajar</legend>
           <div class="field">
@@ -144,7 +158,7 @@
             <p class="hint">Pisahkan dengan koma kalau lebih dari satu</p>
           </div>
         </fieldset>
-
+ 
         <fieldset>
           <legend>Ketersediaan</legend>
           <div class="field">
@@ -160,8 +174,42 @@
             </div>
           </div>
           <div class="field">
-            <label for="radius">Radius maksimal dari domisili (km)</label>
-            <input type="number" id="radius" name="radius" min="1" max="30" value="5">
+            <label>Area yang bersedia diajar</label>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">
+              <label class="checkbox-item" style="justify-content:flex-start;gap:10px;">
+                <input type="radio" name="area_scope" value="seluruh_indonesia" id="scopeIndonesia">
+                Bersedia ke seluruh Indonesia
+              </label>
+              <label class="checkbox-item" style="justify-content:flex-start;gap:10px;">
+                <input type="radio" name="area_scope" value="kota_tertentu" id="scopeKota" checked>
+                Kota / kabupaten tertentu
+              </label>
+            </div>
+          </div>
+          <div id="areaKotaFields">
+            <div class="field">
+              <label for="areaProvinsi">Provinsi</label>
+              <select id="areaProvinsi">
+                <option value="">Memuat daftar provinsi...</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="areaKota">Kota / Kabupaten</label>
+              <select id="areaKota" disabled>
+                <option value="">Pilih provinsi dulu</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="checkbox-item" style="justify-content:flex-start;gap:10px;">
+                <input type="checkbox" id="areaSemuaKecamatan" checked>
+                Bersedia ke semua kecamatan di kota/kabupaten ini
+              </label>
+            </div>
+            <div class="field" id="areaKecamatanWrap" style="display:none;">
+              <label for="areaKecamatan">Pilih kecamatan tertentu saja</label>
+              <select id="areaKecamatan" multiple size="6" disabled></select>
+              <p class="hint">Tahan Cmd/Ctrl (Mac) atau Ctrl (Windows) buat pilih lebih dari satu kecamatan</p>
+            </div>
           </div>
           <div class="field">
             <label for="fee">Perkiraan honor per sesi yang diharapkan (Rp)</label>
@@ -169,55 +217,155 @@
             <p class="hint">Ini masih perkiraan, bisa didiskusikan lagi saat wawancara</p>
           </div>
         </fieldset>
-
+ 
         <button type="submit" class="btn-submit" id="submitBtn">Kirim Pendaftaran</button>
       </form>
     </div>
-
+ 
     <div id="successSection" class="success-box" style="display:none;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
       <h2>Pendaftaran terkirim!</h2>
       <p style="color:var(--muted);margin-top:10px;">Tim Ajarin akan menghubungi kamu via WhatsApp dalam 1-2 hari untuk proses selanjutnya.</p>
     </div>
-
+ 
   </div>
 </main>
-
+ 
 <script>
   const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
-
+  const WILAYAH_API = 'https://www.emsifa.com/api-wilayah-indonesia/api';
+ 
+  async function loadProvinces(selectEl){
+    try{
+      const res = await fetch(`${WILAYAH_API}/provinces.json`);
+      const data = await res.json();
+      selectEl.innerHTML = '<option value="">Pilih provinsi</option>' +
+        data.map(p => `<option value="${p.id}" data-name="${p.name}">${p.name}</option>`).join('');
+    }catch(e){
+      selectEl.innerHTML = '<option value="">Gagal memuat, coba refresh halaman</option>';
+      console.error(e);
+    }
+  }
+ 
+  async function loadRegencies(provinceId, selectEl){
+    selectEl.disabled = true;
+    selectEl.innerHTML = '<option value="">Memuat...</option>';
+    try{
+      const res = await fetch(`${WILAYAH_API}/regencies/${provinceId}.json`);
+      const data = await res.json();
+      selectEl.innerHTML = '<option value="">Pilih kota/kabupaten</option>' +
+        data.map(r => `<option value="${r.id}" data-name="${r.name}">${r.name}</option>`).join('');
+    }catch(e){
+      selectEl.innerHTML = '<option value="">Gagal memuat</option>';
+      console.error(e);
+    }
+    selectEl.disabled = false;
+  }
+ 
+  async function loadDistricts(regencyId, selectEl, isMultiple){
+    selectEl.disabled = true;
+    selectEl.innerHTML = isMultiple ? '' : '<option value="">Memuat...</option>';
+    try{
+      const res = await fetch(`${WILAYAH_API}/districts/${regencyId}.json`);
+      const data = await res.json();
+      const opts = data.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+      selectEl.innerHTML = isMultiple ? opts : '<option value="">Pilih kecamatan</option>' + opts;
+    }catch(e){
+      selectEl.innerHTML = '<option value="">Gagal memuat</option>';
+      console.error(e);
+    }
+    selectEl.disabled = false;
+  }
+ 
+  // Inisialisasi dropdown domisili
+  const domisiliProvinsi = document.getElementById('domisiliProvinsi');
+  const domisiliKota = document.getElementById('domisiliKota');
+  const domisiliKecamatan = document.getElementById('domisiliKecamatan');
+  loadProvinces(domisiliProvinsi);
+  domisiliProvinsi.addEventListener('change', () => loadRegencies(domisiliProvinsi.value, domisiliKota));
+  domisiliKota.addEventListener('change', () => loadDistricts(domisiliKota.value, domisiliKecamatan, false));
+ 
+  // Inisialisasi dropdown area mengajar
+  const areaProvinsi = document.getElementById('areaProvinsi');
+  const areaKota = document.getElementById('areaKota');
+  const areaKecamatan = document.getElementById('areaKecamatan');
+  const areaSemuaKecamatan = document.getElementById('areaSemuaKecamatan');
+  const areaKecamatanWrap = document.getElementById('areaKecamatanWrap');
+  const areaKotaFields = document.getElementById('areaKotaFields');
+  loadProvinces(areaProvinsi);
+  areaProvinsi.addEventListener('change', () => loadRegencies(areaProvinsi.value, areaKota));
+  areaKota.addEventListener('change', () => {
+    if(!areaSemuaKecamatan.checked){
+      loadDistricts(areaKota.value, areaKecamatan, true);
+    }
+  });
+  areaSemuaKecamatan.addEventListener('change', () => {
+    areaKecamatanWrap.style.display = areaSemuaKecamatan.checked ? 'none' : 'block';
+    if(!areaSemuaKecamatan.checked && areaKota.value){
+      loadDistricts(areaKota.value, areaKecamatan, true);
+    }
+  });
+ 
+  document.querySelectorAll('input[name="area_scope"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      areaKotaFields.style.display = document.getElementById('scopeKota').checked ? 'block' : 'none';
+    });
+  });
+ 
+  function getSelectedName(selectEl){
+    const opt = selectEl.options[selectEl.selectedIndex];
+    return opt ? (opt.dataset.name || opt.value) : '';
+  }
+ 
   document.getElementById('tutorForm').addEventListener('submit', async function(e){
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
     const statusMsg = document.getElementById('statusMsg');
     btn.disabled = true;
     btn.textContent = 'Mengirim...';
-
+ 
     const form = e.target;
     const jenjang = Array.from(form.querySelectorAll('input[name="jenjang"]:checked')).map(el => el.value);
     const hari = Array.from(form.querySelectorAll('input[name="hari"]:checked')).map(el => el.value);
     const mapelRaw = form.mapel_skill.value.trim();
     const mapelArr = mapelRaw.split(',').map(s => s.trim()).filter(Boolean);
-
+ 
+    const areaScope = form.querySelector('input[name="area_scope"]:checked').value;
+    let areaProvinsiName = null, areaKotaName = null, areaKecamatanName = null;
+    if(areaScope === 'kota_tertentu'){
+      areaProvinsiName = getSelectedName(areaProvinsi);
+      areaKotaName = getSelectedName(areaKota);
+      if(areaSemuaKecamatan.checked){
+        areaKecamatanName = 'Semua kecamatan';
+      }else{
+        const selected = Array.from(areaKecamatan.selectedOptions).map(o => o.value);
+        areaKecamatanName = selected.join(', ');
+      }
+    }
+ 
     const payload = {
       nama_lengkap: form.nama.value.trim(),
       whatsapp: form.whatsapp.value.trim(),
       email: form.email.value.trim() || null,
-      domisili: form.domisili.value.trim(),
-      kecamatan: form.kecamatan.value.trim(),
+      domisili: form.alamat_detail.value.trim(),
+      kota: getSelectedName(domisiliKota),
+      kecamatan: domisiliKecamatan.value,
       status_pendidikan: form.status_pendidikan.value,
       kampus_instansi: form.kampus_instansi.value.trim() || null,
       pengalaman_mengajar: form.pengalaman_mengajar.value.trim() || null,
       jenjang_diajar: jenjang,
       mapel_skill: mapelArr,
       hari_tersedia: hari,
-      radius_maksimal_km: form.radius.value ? parseInt(form.radius.value) : null,
+      area_mengajar_scope: areaScope,
+      area_mengajar_provinsi: areaProvinsiName,
+      area_mengajar_kota: areaKotaName,
+      area_mengajar_kecamatan: areaKecamatanName,
       fee_per_sesi: form.fee.value ? parseInt(form.fee.value) : null,
       status_verifikasi: 'pending',
       status_aktif: true
     };
-
+ 
     try{
       const res = await fetch(SUPABASE_URL + '/rest/v1/tutors', {
         method: 'POST',
@@ -229,11 +377,11 @@
         },
         body: JSON.stringify(payload)
       });
-
+ 
       if(!res.ok){
         throw new Error('Gagal mengirim, status ' + res.status);
       }
-
+ 
       document.getElementById('formSection').style.display = 'none';
       document.getElementById('successSection').style.display = 'block';
       window.scrollTo({top:0, behavior:'smooth'});
@@ -246,6 +394,6 @@
     }
   });
 </script>
-
+ 
 </body>
 </html>
