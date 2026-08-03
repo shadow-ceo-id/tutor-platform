@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daftar Jadi Tutor — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76;
+    --muted:#5B6B66; --line:#E4DFD1; --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',system-ui,sans-serif;line-height:1.5;}
+  h1,h2,.display{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-0.02em;}
+  .mono{font-family:'IBM Plex Mono',monospace;font-weight:500;letter-spacing:0.02em;text-transform:uppercase;font-size:0.72rem;}
+  a{color:var(--teal);}
+  .wrap{max-width:640px;margin:0 auto;padding:0 24px;}
+  header{padding:22px 0;border-bottom:1px solid var(--line);}
+  .logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.3rem;color:var(--ink);text-decoration:none;}
+  .logo span{color:var(--marigold-deep);}
+  main{padding:48px 0 80px;}
+  .eyebrow{color:var(--teal);display:block;margin-bottom:10px;}
+  h1{font-size:clamp(1.8rem,4vw,2.3rem);margin-bottom:12px;}
+  .lead{color:var(--muted);margin-bottom:36px;max-width:52ch;}
+  fieldset{border:none;margin-bottom:30px;}
+  legend{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.05rem;margin-bottom:16px;padding:0;}
+  .field{margin-bottom:18px;}
+  label{display:block;font-size:0.88rem;font-weight:600;margin-bottom:6px;color:var(--ink-soft);}
+  .hint{font-size:0.8rem;color:var(--muted);margin-top:4px;}
+  input[type=text],input[type=tel],input[type=email],input[type=number],select,textarea{
+    width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;
+    font-family:inherit;font-size:0.95rem;color:var(--ink);background:var(--white);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:var(--teal);}
+  textarea{resize:vertical;min-height:80px;}
+  .checkbox-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  @media(min-width:480px){.checkbox-grid{grid-template-columns:repeat(3,1fr);}}
+  .checkbox-item{
+    display:flex;align-items:center;gap:8px;padding:10px 12px;
+    border:1.5px solid var(--line);border-radius:10px;font-size:0.88rem;cursor:pointer;background:var(--white);
+  }
+  .checkbox-item input{width:auto;}
+  .btn-submit{
+    width:100%;background:var(--ink);color:var(--paper);border:none;
+    padding:16px;border-radius:999px;font-weight:600;font-size:1rem;cursor:pointer;
+    font-family:inherit;
+  }
+  .btn-submit:hover{background:var(--ink-soft);}
+  .btn-submit:disabled{opacity:0.5;cursor:not-allowed;}
+  .status-msg{
+    padding:16px;border-radius:12px;margin-bottom:24px;font-size:0.92rem;display:none;
+  }
+  .status-msg.show{display:block;}
+  .status-success{background:rgba(31,138,118,0.1);color:var(--teal);border:1px solid rgba(31,138,118,0.3);}
+  .status-error{background:rgba(217,138,34,0.1);color:var(--marigold-deep);border:1px solid rgba(217,138,34,0.3);}
+  .success-box{text-align:center;padding:40px 20px;}
+  .success-box svg{width:52px;height:52px;color:var(--teal);margin-bottom:16px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a href="index.html" class="logo">Ajarin<span>.</span></a>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <div id="formSection">
+      <span class="eyebrow mono">Founding Tutor — Batch 1</span>
+      <h1>Daftar jadi tutor Ajarin</h1>
+      <p class="lead">Isi data di bawah ini. Setelah masuk, tim kami akan menghubungi kamu via WhatsApp untuk proses verifikasi dan wawancara singkat.</p>
+
+      <div id="statusMsg" class="status-msg"></div>
+
+      <form id="tutorForm">
+
+        <fieldset>
+          <legend>Identitas</legend>
+          <div class="field">
+            <label for="nama">Nama lengkap</label>
+            <input type="text" id="nama" name="nama" required>
+          </div>
+          <div class="field">
+            <label for="whatsapp">Nomor WhatsApp aktif</label>
+            <input type="tel" id="whatsapp" name="whatsapp" placeholder="08xxxxxxxxxx" required>
+          </div>
+          <div class="field">
+            <label for="email">Email (opsional)</label>
+            <input type="email" id="email" name="email">
+          </div>
+          <div class="field">
+            <label for="domisili">Alamat domisili</label>
+            <input type="text" id="domisili" name="domisili" required>
+          </div>
+          <div class="field">
+            <label for="kecamatan">Kecamatan</label>
+            <input type="text" id="kecamatan" name="kecamatan" required>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Latar belakang</legend>
+          <div class="field">
+            <label for="status_pendidikan">Status</label>
+            <select id="status_pendidikan" name="status_pendidikan" required>
+              <option value="">Pilih status</option>
+              <option value="Mahasiswa aktif">Mahasiswa aktif</option>
+              <option value="Lulusan D3/S1">Lulusan D3/S1</option>
+              <option value="Guru">Guru</option>
+              <option value="Praktisi/pelatih profesional">Praktisi/pelatih profesional</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="kampus_instansi">Kampus / instansi (kalau ada)</label>
+            <input type="text" id="kampus_instansi" name="kampus_instansi">
+          </div>
+          <div class="field">
+            <label for="pengalaman_mengajar">Pengalaman mengajar</label>
+            <textarea id="pengalaman_mengajar" name="pengalaman_mengajar" placeholder="Ceritakan singkat pengalaman mengajar kamu (boleh belum ada pengalaman formal)"></textarea>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Jenjang & bidang yang bisa diajar</legend>
+          <div class="field">
+            <label>Jenjang</label>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input type="checkbox" name="jenjang" value="SD"> SD</label>
+              <label class="checkbox-item"><input type="checkbox" name="jenjang" value="SMP"> SMP</label>
+              <label class="checkbox-item"><input type="checkbox" name="jenjang" value="SMA"> SMA</label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="mapel_skill">Mata pelajaran / skill yang dikuasai</label>
+            <input type="text" id="mapel_skill" name="mapel_skill" placeholder="Contoh: Matematika, Calistung, Mengaji" required>
+            <p class="hint">Pisahkan dengan koma kalau lebih dari satu</p>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Ketersediaan</legend>
+          <div class="field">
+            <label>Hari tersedia</label>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input type="checkbox" name="hari" value="Senin"> Senin</label>
+              <label class="checkbox-item"><input type="checkbox" name="hari" value="Selasa"> Selasa</label>
+              <label class="checkbox-item"><input type="checkbox" name="hari" value="Rabu"> Rabu</label>
+              <label class="checkbox-item"><input type="checkbox" name="hari" value="Kamis"> Kamis</label>
+              <label class="checkbox-item"><input type="checkbox" name="hari" value="Jumat"> Jumat</label>
+              <label class="checkbox-item"><input type="checkbox" name="hari" value="Sabtu"> Sabtu</label>
+              <label class="checkbox-item"><input type="checkbox" name="hari" value="Minggu"> Minggu</label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="radius">Radius maksimal dari domisili (km)</label>
+            <input type="number" id="radius" name="radius" min="1" max="30" value="5">
+          </div>
+          <div class="field">
+            <label for="fee">Perkiraan honor per sesi yang diharapkan (Rp)</label>
+            <input type="number" id="fee" name="fee" placeholder="Contoh: 50000" min="0" step="5000">
+            <p class="hint">Ini masih perkiraan, bisa didiskusikan lagi saat wawancara</p>
+          </div>
+        </fieldset>
+
+        <button type="submit" class="btn-submit" id="submitBtn">Kirim Pendaftaran</button>
+      </form>
+    </div>
+
+    <div id="successSection" class="success-box" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
+      <h2>Pendaftaran terkirim!</h2>
+      <p style="color:var(--muted);margin-top:10px;">Tim Ajarin akan menghubungi kamu via WhatsApp dalam 1-2 hari untuk proses selanjutnya.</p>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+
+  document.getElementById('tutorForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const statusMsg = document.getElementById('statusMsg');
+    btn.disabled = true;
+    btn.textContent = 'Mengirim...';
+
+    const form = e.target;
+    const jenjang = Array.from(form.querySelectorAll('input[name="jenjang"]:checked')).map(el => el.value);
+    const hari = Array.from(form.querySelectorAll('input[name="hari"]:checked')).map(el => el.value);
+    const mapelRaw = form.mapel_skill.value.trim();
+    const mapelArr = mapelRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+    const payload = {
+      nama_lengkap: form.nama.value.trim(),
+      whatsapp: form.whatsapp.value.trim(),
+      email: form.email.value.trim() || null,
+      domisili: form.domisili.value.trim(),
+      kecamatan: form.kecamatan.value.trim(),
+      status_pendidikan: form.status_pendidikan.value,
+      kampus_instansi: form.kampus_instansi.value.trim() || null,
+      pengalaman_mengajar: form.pengalaman_mengajar.value.trim() || null,
+      jenjang_diajar: jenjang,
+      mapel_skill: mapelArr,
+      hari_tersedia: hari,
+      radius_maksimal_km: form.radius.value ? parseInt(form.radius.value) : null,
+      fee_per_sesi: form.fee.value ? parseInt(form.fee.value) : null,
+      status_verifikasi: 'pending',
+      status_aktif: true
+    };
+
+    try{
+      const res = await fetch(SUPABASE_URL + '/rest/v1/tutors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if(!res.ok){
+        throw new Error('Gagal mengirim, status ' + res.status);
+      }
+
+      document.getElementById('formSection').style.display = 'none';
+      document.getElementById('successSection').style.display = 'block';
+      window.scrollTo({top:0, behavior:'smooth'});
+    }catch(err){
+      console.error(err);
+      statusMsg.textContent = 'Maaf, ada kendala saat mengirim data. Coba lagi sebentar, atau hubungi admin langsung.';
+      statusMsg.className = 'status-msg status-error show';
+      btn.disabled = false;
+      btn.textContent = 'Kirim Pendaftaran';
+    }
+  });
+</script>
+
+</body>
+</html>

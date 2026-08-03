@@ -267,8 +267,8 @@
         <h1>Butuh yang jago?<br><span class="accent">Ajarin aja.</span></h1>
         <p class="lead">Temukan tutor terverifikasi untuk akademik, musik, olahraga, sampai skill lainnya — datang langsung ke tempatmu, dengan garansi ganti kalau kurang cocok.</p>
         <div class="hero-actions">
-          <a href="#cari" class="btn btn-accent">Saya Cari Tutor</a>
-          <a href="#tutor" class="btn btn-ghost">Saya Mau Jadi Tutor</a>
+          <button class="btn btn-accent" onclick="openChat()">Saya Cari Tutor</button>
+          <a href="daftar-tutor.html" class="btn btn-ghost">Saya Mau Jadi Tutor</a>
         </div>
         <p class="hero-note">Trial pertama mulai Rp49.000 · Bisa privat atau kelompok kecil</p>
       </div>
@@ -365,7 +365,7 @@
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Garansi ganti tutor kalau kurang cocok</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Pembayaran aman lewat Ajarin, bukan tunai langsung</li>
           </ul>
-          <a href="https://wa.me/6281575143612?text=Halo%20Ajarin%2C%20saya%20mau%20cari%20tutor" class="btn btn-accent">Cari Tutor Sekarang</a>
+          <button class="btn btn-accent" onclick="openChat()">Cari Tutor Sekarang</button>
         </div>
         <div class="path-card path-tutor" id="tutor">
           <span class="mono">Untuk yang mau jadi tutor</span>
@@ -376,7 +376,7 @@
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Jadwal dan lokasi disesuaikan domisili kamu</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Bisa naik jenjang jadi Tutor Senior</li>
           </ul>
-          <a href="https://wa.me/6281575143612?text=Halo%20Ajarin%2C%20saya%20mau%20daftar%20jadi%20tutor" class="btn btn-ghost">Daftar Jadi Tutor</a>
+          <a href="daftar-tutor.html" class="btn btn-ghost">Daftar Jadi Tutor</a>
         </div>
       </div>
     </div>
@@ -414,8 +414,8 @@
         <h2>Siap mulai belajar bareng yang jago?</h2>
         <p>Ceritakan kebutuhanmu lewat WhatsApp, kami bantu carikan tutor yang cocok dalam waktu singkat.</p>
         <div class="final-actions">
-          <a href="https://wa.me/6281575143612?text=Halo%20Ajarin%2C%20saya%20mau%20cari%20tutor" class="btn btn-accent">Saya Cari Tutor</a>
-          <a href="https://wa.me/6281575143612?text=Halo%20Ajarin%2C%20saya%20mau%20daftar%20jadi%20tutor" class="btn btn-primary" style="background:transparent;border:1.5px solid rgba(250,248,242,0.4);color:var(--paper);">Saya Mau Jadi Tutor</a>
+          <button class="btn btn-accent" onclick="openChat()">Saya Cari Tutor</button>
+          <a href="daftar-tutor.html" class="btn btn-primary" style="background:transparent;border:1.5px solid rgba(250,248,242,0.4);color:var(--paper);">Saya Mau Jadi Tutor</a>
         </div>
       </div>
     </div>
@@ -431,8 +431,8 @@
         <p>Platform mencari dan memesan tutor terverifikasi yang datang langsung ke tempatmu.</p>
       </div>
       <div class="footer-contact">
-        WhatsApp Admin<br>
-        <a href="https://wa.me/6281575143612">0815-7514-3612</a>
+        Ada pertanyaan?<br>
+        <a href="#" onclick="openChat();return false;">Chat dengan Ajarin</a>
       </div>
     </div>
     <div class="footer-fine">
@@ -441,10 +441,212 @@
   </div>
 </footer>
 
-<!-- Placeholder tombol chat — akan diaktifkan di Tahap 2 dengan AI chatbot -->
-<button class="chat-fab" aria-label="Chat dengan Ajarin" onclick="window.open('https://wa.me/6281575143612','_blank')">
+<!-- Tombol buka chat -->
+<button class="chat-fab" id="chatFab" aria-label="Chat dengan Ajarin" onclick="openChat()">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 01-8.5 8.5c-1.35 0-2.6-.32-3.7-.9L3 21l1.9-5.7A8.4 8.4 0 013.5 11.5 8.5 8.5 0 0112 3a8.5 8.5 0 019 8.5z"/></svg>
 </button>
+
+<!-- Chat widget -->
+<div id="chatOverlay" class="chat-overlay" aria-hidden="true">
+  <div class="chat-panel" role="dialog" aria-label="Chat dengan Ajarin">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">Ajarin</div>
+        <div class="chat-header-sub">Biasanya balas dalam hitungan detik</div>
+      </div>
+      <button class="chat-close" aria-label="Tutup chat" onclick="closeChat()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <form class="chat-input-row" id="chatForm">
+      <input type="text" id="chatInput" placeholder="Tulis pesan..." autocomplete="off" required>
+      <button type="submit" class="chat-send" aria-label="Kirim">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      </button>
+    </form>
+  </div>
+</div>
+
+<style>
+  .chat-overlay{
+    position:fixed;inset:0;background:rgba(15,42,38,0.4);
+    display:none;align-items:flex-end;justify-content:flex-end;
+    padding:0;z-index:100;
+  }
+  .chat-overlay.open{display:flex;}
+  @media(min-width:640px){.chat-overlay{padding:24px;align-items:flex-end;}}
+  .chat-panel{
+    background:var(--white);width:100%;max-width:420px;height:100%;
+    display:flex;flex-direction:column;
+    border-radius:0;box-shadow:0 30px 80px -20px rgba(15,42,38,0.5);
+  }
+  @media(min-width:640px){.chat-panel{height:min(640px,90vh);border-radius:20px;overflow:hidden;}}
+  .chat-header{
+    background:var(--ink);color:var(--paper);padding:18px 20px;
+    display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+  }
+  .chat-header-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.1rem;}
+  .chat-header-sub{font-size:0.78rem;color:rgba(250,248,242,0.65);margin-top:2px;}
+  .chat-close{background:none;border:none;color:var(--paper);cursor:pointer;padding:6px;}
+  .chat-body{
+    flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;
+    background:var(--paper);
+  }
+  .msg{max-width:82%;padding:11px 15px;border-radius:16px;font-size:0.92rem;line-height:1.45;}
+  .msg-bot{background:var(--white);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px;}
+  .msg-user{background:var(--ink);color:var(--paper);align-self:flex-end;border-bottom-right-radius:4px;}
+  .msg-typing{align-self:flex-start;display:flex;gap:4px;padding:14px 16px;}
+  .msg-typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);opacity:0.5;animation:blink 1.2s infinite;}
+  .msg-typing span:nth-child(2){animation-delay:0.2s;}
+  .msg-typing span:nth-child(3){animation-delay:0.4s;}
+  @keyframes blink{0%,80%,100%{opacity:0.3;}40%{opacity:1;}}
+  .chat-input-row{
+    display:flex;gap:10px;padding:14px;border-top:1px solid var(--line);
+    background:var(--white);flex-shrink:0;
+  }
+  .chat-input-row input{
+    flex:1;border:1px solid var(--line);border-radius:999px;padding:11px 16px;
+    font-family:inherit;font-size:0.92rem;background:var(--paper);color:var(--ink);
+  }
+  .chat-input-row input:focus{outline:2px solid var(--teal);outline-offset:1px;}
+  .chat-send{
+    background:var(--marigold);border:none;color:var(--ink);
+    width:42px;height:42px;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .chat-send svg{width:18px;height:18px;}
+</style>
+
+<script>
+  const CHAT_API = '/api/chat';
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+
+  let chatHistory = [];
+  let chatOpened = false;
+
+  function openChat(){
+    document.getElementById('chatOverlay').classList.add('open');
+    if(!chatOpened){
+      chatOpened = true;
+      addBotMessage('Halo! Aku asisten Ajarin 👋 Kamu lagi cari tutor, atau mau tanya-tanya dulu?');
+    }
+  }
+  function closeChat(){
+    document.getElementById('chatOverlay').classList.remove('open');
+  }
+
+  function scrollChatToBottom(){
+    const body = document.getElementById('chatBody');
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function addBotMessage(text){
+    const body = document.getElementById('chatBody');
+    const el = document.createElement('div');
+    el.className = 'msg msg-bot';
+    el.textContent = text;
+    body.appendChild(el);
+    scrollChatToBottom();
+  }
+  function addUserMessage(text){
+    const body = document.getElementById('chatBody');
+    const el = document.createElement('div');
+    el.className = 'msg msg-user';
+    el.textContent = text;
+    body.appendChild(el);
+    scrollChatToBottom();
+  }
+  function showTyping(){
+    const body = document.getElementById('chatBody');
+    const el = document.createElement('div');
+    el.className = 'msg-typing';
+    el.id = 'typingIndicator';
+    el.innerHTML = '<span></span><span></span><span></span>';
+    body.appendChild(el);
+    scrollChatToBottom();
+  }
+  function hideTyping(){
+    const el = document.getElementById('typingIndicator');
+    if(el) el.remove();
+  }
+
+  async function saveLeadToSupabase(leadData){
+    try{
+      await fetch(SUPABASE_URL + '/rest/v1/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          nama: leadData.nama || null,
+          whatsapp: leadData.whatsapp || null,
+          kelas_jenjang: leadData.kelas_jenjang || null,
+          mapel_skill_dibutuhkan: leadData.mapel_skill_dibutuhkan || null,
+          kendala: leadData.kendala || null,
+          lokasi: leadData.lokasi || null,
+          kota: leadData.kota || 'Kudus',
+          jadwal_diinginkan: leadData.jadwal_diinginkan || null,
+          sumber: 'chatbot'
+        })
+      });
+    }catch(e){
+      console.error('Gagal simpan lead:', e);
+    }
+  }
+
+  function extractLeadData(reply){
+    const match = reply.match(/<!--LEAD_DATA\s*([\s\S]*?)-->/);
+    if(!match) return { cleanText: reply, lead: null };
+    let lead = null;
+    try{ lead = JSON.parse(match[1].trim()); }catch(e){ lead = null; }
+    const cleanText = reply.replace(match[0], '').trim();
+    return { cleanText, lead };
+  }
+
+  document.getElementById('chatForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if(!text) return;
+
+    addUserMessage(text);
+    chatHistory.push({ role: 'user', content: text });
+    input.value = '';
+    showTyping();
+
+    try{
+      const res = await fetch(CHAT_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: chatHistory })
+      });
+      const data = await res.json();
+      hideTyping();
+
+      if(!res.ok || !data.reply){
+        addBotMessage('Maaf, lagi ada gangguan. Coba lagi sebentar ya.');
+        return;
+      }
+
+      const { cleanText, lead } = extractLeadData(data.reply);
+      addBotMessage(cleanText);
+      chatHistory.push({ role: 'assistant', content: data.reply });
+
+      if(lead){
+        saveLeadToSupabase(lead);
+      }
+    }catch(err){
+      hideTyping();
+      addBotMessage('Maaf, koneksi lagi bermasalah. Coba lagi sebentar ya.');
+      console.error(err);
+    }
+  });
+</script>
 
 </body>
 </html>
