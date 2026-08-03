@@ -690,6 +690,25 @@
       console.error(err);
     }
   });
+
+// Fix keyboard overlay di mobile — resize chat panel ikutin visual viewport
+function syncChatHeightToViewport(){
+  const panel = document.querySelector('.chat-panel');
+  if(!panel || !window.visualViewport) return;
+  const vh = window.visualViewport.height;
+  panel.style.height = vh + 'px';
+  window.scrollTo(0, 0);
+}
+
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', syncChatHeightToViewport);
+  window.visualViewport.addEventListener('scroll', syncChatHeightToViewport);
+}
+
+// Panggil juga tiap kali input di-fokus (keyboard baru muncul)
+document.getElementById('chatInput')?.addEventListener('focus', () => {
+  setTimeout(syncChatHeightToViewport, 300);
+});
 </script>
  
 </body>
