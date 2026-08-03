@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
@@ -447,7 +447,7 @@
 </button>
  
 <!-- Chat widget -->
-<div id="chatOverlay" class="chat-overlay" aria-hidden="true">
+<div id="chatOverlay" class="chat-overlay" aria-hidden="true" onclick="if(event.target===this)closeChat()">
   <div class="chat-panel" role="dialog" aria-label="Chat dengan Ajarin">
     <div class="chat-header">
       <div>
@@ -455,7 +455,7 @@
         <div class="chat-header-sub">Biasanya balas dalam hitungan detik</div>
       </div>
       <button class="chat-close" aria-label="Tutup chat" onclick="closeChat()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
     <div class="chat-body" id="chatBody"></div>
@@ -488,7 +488,13 @@
   }
   .chat-header-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.1rem;}
   .chat-header-sub{font-size:0.78rem;color:rgba(250,248,242,0.65);margin-top:2px;}
-  .chat-close{background:none;border:none;color:var(--paper);cursor:pointer;padding:6px;}
+  .chat-close{
+    background:rgba(250,248,242,0.14);border:none;color:var(--paper);cursor:pointer;
+    padding:9px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    width:38px;height:38px;flex-shrink:0;transition:background .15s ease;
+  }
+  .chat-close:hover{background:rgba(250,248,242,0.26);}
+  .chat-close svg{width:20px;height:20px;}
   .chat-body{
     flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;
     background:var(--paper);
@@ -520,27 +526,23 @@
  
 <script>
   const CHAT_API = '/api/chat';
-  const NOTIFY_API = '/api/notify-telegram';
   const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
  
   let chatHistory = [];
   let chatOpened = false;
   let sessionId = null;
-  let capturedLead = null;
-  let notifiedForLead = false;
  
   function openChat(){
     document.getElementById('chatOverlay').classList.add('open');
     if(!chatOpened){
       chatOpened = true;
       sessionId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
-      addBotMessage('Halo! Aku asisten Ajarin 👋 Kamu lagi cari tutor, atau mau tanya-tanya dulu?');
+      addBotMessage('Halo Kak! 👋 Selamat datang di Ajarin. Ada yang bisa dibantu — mau cari tutor, atau ada yang mau ditanyain dulu?');
     }
   }
   function closeChat(){
     document.getElementById('chatOverlay').classList.remove('open');
-    sendTranscriptToAdmin('chat_closed');
   }
  
   function scrollChatToBottom(){
@@ -642,25 +644,7 @@
     return { cleanText, category: match ? match[1] : null };
   }
  
-  function sendTranscriptToAdmin(trigger){
-    if(chatHistory.length === 0) return;
-    const payload = JSON.stringify({
-      sessionId, messages: chatHistory, lead: capturedLead, trigger
-    });
-    try{
-      if(navigator.sendBeacon){
-        navigator.sendBeacon(NOTIFY_API, new Blob([payload], {type:'application/json'}));
-      }else{
-        fetch(NOTIFY_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: payload, keepalive:true });
-      }
-    }catch(e){
-      console.error('Gagal kirim transkrip:', e);
-    }
-  }
- 
-  window.addEventListener('beforeunload', function(){
-    sendTranscriptToAdmin('page_closed');
-  });
+  let notifiedForLead = false;
  
   document.getElementById('chatForm').addEventListener('submit', async function(e){
     e.preventDefault();
@@ -697,10 +681,8 @@
       logMessageToSupabase('assistant', cleanText, category);
  
       if(lead && !notifiedForLead){
-        capturedLead = lead;
         notifiedForLead = true;
         saveLeadToSupabase(lead);
-        sendTranscriptToAdmin('lead_captured');
       }
     }catch(err){
       hideTyping();
@@ -712,3 +694,4 @@
  
 </body>
 </html>
+ 
