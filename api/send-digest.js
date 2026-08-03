@@ -29,6 +29,13 @@ module.exports = async (req, res) => {
         },
       }
     );
+
+    if (!logsRes.ok) {
+      const errText = await logsRes.text();
+      console.error('Supabase fetch error:', errText);
+      return res.status(500).json({ error: 'Gagal ambil data dari Supabase', detail: errText });
+    }
+
     const logs = await logsRes.json();
 
     if (!Array.isArray(logs) || logs.length === 0) {
@@ -70,17 +77,23 @@ module.exports = async (req, res) => {
     }
     if (current.trim()) chunks.push(current);
 
+    // Kirim tiap chunk ke Telegram — dan CEK hasil responnya, jangan diabaikan
     for (const chunk of chunks) {
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: chatId, text: chunk }),
       });
+      const tgData = await tgRes.json();
+      if (!tgData.ok) {
+        console.error('Telegram API error:', tgData);
+        return res.status(500).json({ error: 'Telegram gagal kirim', detail: tgData });
+      }
     }
 
     // Tandai semua log yang barusan dikirim sebagai notified
     const idsToMark = logs.map((l) => l.id);
-    await fetch(`${SUPABASE_URL}/rest/v1/chat_logs?id=in.(${idsToMark.join(',')})`, {
+    const markRes = await fetch(`${SUPABASE_URL}/rest/v1/chat_logs?id=in.(${idsToMark.join(',')})`, {
       method: 'PATCH',
       headers: {
         apikey: SERVICE_KEY,
@@ -91,9 +104,21 @@ module.exports = async (req, res) => {
       body: JSON.stringify({ notified: true }),
     });
 
+    if (!markRes.ok) {
+      const errText = await markRes.text();
+      console.error('Gagal update notified flag:', errText);
+      // Telegram sudah terlanjur kekirim, tapi kasih tau supaya nggak double-check terus
+      return res.status(200).json({
+        sent: sessionIds.length,
+        messages: logs.length,
+        warning: 'Terkirim ke Telegram, tapi gagal update status notified di Supabase',
+        detail: errText,
+      });
+    }
+
     return res.status(200).json({ sent: sessionIds.length, messages: logs.length });
   } catch (err) {
     console.error('Digest error:', err);
-    return res.status(500).json({ error: 'Gagal kirim digest' });
+    return res.status(500).json({ error: 'Gagal kirim digest', detail: String(err) });
   }
 };
