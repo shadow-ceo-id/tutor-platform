@@ -81,7 +81,7 @@
     }
     currentUser = session.user;
 
-    const { data: slots } = await supabase
+    const { data: slots } = await supabaseClient
       .from('availability_slots')
       .select('*')
       .eq('tutor_id', currentUser.id)

@@ -91,7 +91,7 @@
     currentUser = session.user;
 
     // Ambil profil tutor kalau udah ada
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from('tutor_profiles')
       .select('*')
       .eq('user_id', currentUser.id)

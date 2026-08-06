@@ -56,7 +56,7 @@
       return;
     }
 
-    const { data: userProfile } = await supabase
+    const { data: userProfile } = await supabaseClient
       .from('users')
       .select('nama, roles')
       .eq('id', session.user.id)
