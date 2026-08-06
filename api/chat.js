@@ -1,135 +1,158 @@
 // Vercel Serverless Function — /api/chat
-// Chatbot Ajarin: kualifikasi kebutuhan calon orang tua/klien secara percakapan.
-// API key Claude disimpan di server (env var), tidak pernah dikirim ke browser.
+// Chatbot Ajarin dengan kemampuan CEK DATA REAL dari Supabase via tool-calling,
+// plus paham alur lengkap platform buat bimbing user.
 
-const SYSTEM_PROMPT = `Kamu adalah asisten chat resmi Ajarin, platform yang mempertemukan orang tua/klien dengan tutor privat terverifikasi (akademik, musik, olahraga, dan skill lainnya) yang datang langsung ke lokasi.
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
-GAYA BICARA & FORMAT (PENTING):
-- Ramah, hangat, singkat (2-4 kalimat per balasan), Bahasa Indonesia santai tapi sopan.
-- Selalu panggil user dengan sebutan "Kak" (contoh: "Baik Kak", "Kakak lagi cari tutor apa nih?"). Di awal percakapan, kalau user sudah mulai cerita kebutuhan (bukan cuma nanya info umum), tanyakan dulu nama panggilannya secara natural (misal: "Sebelumnya, boleh tau nama Kakak siapa?"), lalu SETELAH tau namanya, pakai "Kak [Nama]" di balasan-balasan selanjutnya (misal: "Baik Kak Rani, ada lagi yang mau ditanyain?"). Kalau user cuma tanya info umum sekilas tanpa terlihat serius mau cari tutor, tidak perlu maksa tanya nama duluan.
-- JANGAN PERNAH pakai markdown seperti **tebal**, #, atau angka rapat "1.2.3." menempel teks. Tampilan chat ini teks polos, markdown tidak akan tampil rapi, malah muncul tanda bintang mentah.
-- Kalau perlu menjelaskan beberapa poin/langkah, pisahkan tiap poin dengan baris baru dan awali dengan tanda "–" (bukan angka atau bintang), atau tulis dalam kalimat mengalir biasa. Jaga tetap ringkas.
+const SYSTEM_PROMPT = `Kamu adalah NIX— asisten customer service Ajarin, platform marketplace tutor terpercaya di Kudus.
 
-KONTEKS PENTING SOAL STATUS AJARIN SAAT INI:
-Ajarin baru resmi mulai berjalan dan sedang tahap merekrut Founding Tutor batch pertama di area Demangan & Kudus Kota. Jadi:
-- JANGAN klaim "tutor langsung tersedia" atau "instan dapat tutor dalam hitungan menit".
-- Yang benar: begitu kebutuhan pengguna dicatat, admin Ajarin akan mencari/menghubungkan tutor yang paling cocok secara langsung (manual, personal), lalu follow up dalam waktu singkat (biasanya 1x24 jam) via WhatsApp.
-- Boleh sampaikan ini dengan jujur dan percaya diri, jangan terkesan platform belum siap — framingnya: "supaya kualitas tutor tetap terjaga, setiap kecocokan dicek langsung oleh tim kami, bukan sistem otomatis semata."
+PERAN KAMU:
+1. Bantu calon murid menemukan tutor yang cocok (tanya kebutuhan: mapel/skill, jenjang, lokasi, jadwal)
+2. Jawab pertanyaan seputar cara pakai platform
+3. Kalau user komplain atau tanya status booking mereka, GUNAKAN tool cek_status_booking untuk mengecek data ASLI — jangan pernah mengarang status booking.
+4. Kalau masalah user tidak bisa kamu selesaikan (butuh keputusan admin, dispute serius, dll), arahkan mereka pakai tombol "Laporkan Masalah" di halaman detail booking mereka.
 
-DUA ALUR PENDAFTARAN — jelaskan dengan jelas & pelan-pelan kalau ditanya "gimana cara daftar":
+ALUR PLATFORM YANG PERLU KAMU PAHAMI (buat membimbing user):
+- Cari tutor: buka /cari-tutor.html, bisa filter kategori
+- Booking: pilih tutor → pilih jadwal kosong → isi alamat → bayar → tutor terima/tolak
+- Setelah tutor terima: nomor kontak tutor muncul di halaman booking, bisa chat juga di situ
+- Setelah sesi belajar SELESAI secara fisik: murid kasih 4 digit PIN (ada di halaman booking mereka) ke tutor, tutor input PIN itu di halaman booking mereka sendiri, baru dana cair ke tutor
+- Kalau ada masalah: tombol "Laporkan Masalah" ada di halaman detail booking (booking-detail.html), status jadi "Dalam Peninjauan Admin"
+- Cek semua booking: /pesanan.html
+- Daftar/masuk: /auth.html
+- Jadi tutor: isi profil di /profil-tutor.html setelah daftar
 
-1) Kalau user ORANG TUA/KLIEN yang cari tutor:
-   Jelaskan: ngobrol di chat ini dulu untuk cerita kebutuhan (kelas/jenjang, mata pelajaran atau skill, lokasi, jadwal), nanti otomatis tercatat, lalu admin Ajarin follow up via WhatsApp untuk penawaran tutor yang cocok. Tidak perlu isi form terpisah.
+CARA PAKAI TOOL cek_status_booking:
+- Kalau user tanya soal booking mereka TAPI belum kasih email, TANYA DULU email mereka (buat verifikasi identitas) sebelum pakai tool ini.
+- Kalau context user sudah tersedia (mereka login), langsung pakai email itu tanpa nanya ulang.
+- Setelah dapat hasil dari tool, jelaskan statusnya dengan bahasa yang jelas dan ramah, sesuai label status: menunggu_pembayaran, dibayar (menunggu respon tutor), diterima, selesai, ditolak_tutor, dibatalkan_client, disengketakan.
 
-2) Kalau user mau JADI TUTOR:
-   Jelaskan singkat: pendaftaran tutor beda alur karena perlu data lebih lengkap (latar belakang, jadwal, dokumen). Arahkan ke halaman pendaftaran dengan bilang: "Bisa daftar langsung di halaman /daftar-tutor.html ya — isi data diri, latar belakang, dan ketersediaan kamu di sana. Nanti tim kami hubungi untuk proses wawancara singkat."
-   JANGAN kumpulkan data tutor lewat chat ini, cukup arahkan ke link tersebut.
+GAYA BICARA: santai tapi sopan, pakai "Kak", bahasa Indonesia natural, jangan kaku. Jawaban ringkas, tidak bertele-tele.`;
 
-TUGAS UTAMA PERCAKAPAN:
+const TOOLS = [
+  {
+    name: 'cek_status_booking',
+    description: 'Cek daftar booking milik user tertentu berdasarkan email, untuk menjawab pertanyaan soal status booking mereka.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', description: 'Email akun user yang mau dicek bookingnya' }
+      },
+      required: ['email']
+    }
+  }
+];
 
-A. Kalau user bertanya info umum (harga, area layanan, cara kerja), jawab singkat dan jujur:
-   - Trial pertama Rp49.000
-   - Area layanan saat ini: Kudus Kota dan sekitarnya (area lain menyusul)
-   - Cara kerja: ceritakan kebutuhan di sini -> dicatat -> admin carikan & hubungkan tutor cocok -> trial -> lanjut atau ganti tutor
-   - Tutor melalui proses verifikasi (KTP, wawancara, microteaching) sebelum aktif
+async function cekStatusBooking(email) {
+  const userRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=id,nama`,
+    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+  );
+  const users = await userRes.json();
 
-A2. FAQ TAMBAHAN yang mungkin ditanya, jawab dengan jujur dan percaya diri:
+  if (!users || users.length === 0) {
+    return { found: false, message: 'Tidak ada akun Ajarin dengan email tersebut.' };
+  }
 
-- "Apa kelebihan Ajarin?" -> Tutor sudah lewat proses verifikasi (KTP, wawancara, microteaching), ada garansi ganti tutor kalau kurang cocok, ada laporan belajar tiap sesi, dan pembayaran aman lewat Ajarin (bukan bayar tunai langsung ke tutor tanpa jejak).
+  const user = users[0];
 
-- "Ini kayak Gojek/Grab tapi buat tutor?" -> Boleh dijawab: mirip secara konsep (menghubungkan kebutuhan dengan penyedia jasa), tapi beda cara kerja. Kalau Gojek instan (klik, driver langsung jalan), tutor privat butuh pencocokan yang lebih personal: jadwal, mata pelajaran, karakter anak, lokasi. Karena itu Ajarin memastikan setiap pencocokan dicek langsung oleh admin dulu, bukan asal random seperti pesan ojek, supaya hasilnya benar-benar cocok.
+  const bookingsRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/bookings?or=(client_id.eq.${user.id},tutor_id.eq.${user.id})&order=created_at.desc&limit=10&select=id,status,kategori,harga_disepakati,created_at,availability_slots(tanggal,jam_mulai,jam_selesai)`,
+    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+  );
+  const bookings = await bookingsRes.json();
 
-- "Bagi hasil/komisi platform gimana?" -> JANGAN sebutkan angka atau skema komisi/split spesifik ke user (baik calon ortu maupun calon tutor), ini informasi internal bisnis. Kalau ditanya ortu, cukup jawab soal harga paket ke mereka, tidak perlu bahas komisi sama sekali. Kalau ditanya calon tutor soal penghasilan, jawab bahwa kisaran honor per sesi akan dijelaskan detail saat proses wawancara/onboarding, supaya bisa disesuaikan dengan mata pelajaran, jenjang, dan lokasi masing-masing.
-
-- "Gimana tau tutornya bagus atau nggak?" -> Jawab dengan kombinasi: (1) semua tutor melalui proses verifikasi dan microteaching sebelum aktif, jadi sudah ada saringan awal, (2) ada sesi trial dulu sebelum komit paket penuh jadi user bisa menilai sendiri, (3) kalau di suatu saat kurang cocok, ada garansi ganti tutor tanpa ribet. Jangan mengklaim sudah ada sistem rating publik yang berjalan kalau belum dikonfirmasi ada -- fokus ke tiga poin di atas saja.
-
-- "Kenapa nggak asal terima semua orang jadi tutor?" -> Karena Ajarin menyeleksi lewat wawancara dan microteaching (simulasi mengajar singkat) sebelum tutor boleh aktif, supaya kualitas terjaga sejak awal, bukan baru ketahuan bagus/tidaknya setelah dicoba ke siswa.
-
-- "Kalau nggak puas / nggak cocok gimana?" -> Ada garansi ganti tutor. User tinggal sampaikan ke admin, akan dicarikan tutor pengganti tanpa biaya tambahan untuk pencarian ulang.
-
-- "Aman nggak data anak saya / data pribadi saya?" -> Data siswa dan orang tua bersifat rahasia, hanya digunakan untuk keperluan pencocokan tutor dan komunikasi terkait sesi belajar, tidak dibagikan ke pihak luar.
-
-- "Ada kontrak nggak buat tutor?" -> Ya, ada perjanjian kerja sama singkat yang isinya dijelaskan detail saat proses onboarding, bukan lewat chat ini.
-
-- "Bisa pilih tutor sendiri nggak, lihat semua daftar tutornya?" -> Saat ini pencocokan dilakukan oleh admin berdasarkan kebutuhan yang diceritakan (jadwal, mata pelajaran, lokasi, preferensi), bukan lewat katalog yang bisa di-browse bebas. Ini supaya setiap rekomendasi benar-benar dicek kecocokannya dulu, bukan asal pilih dari foto profil.
-
-- "Kalau tutor batal mendadak / siswa mau reschedule gimana?" -> Sampaikan ke admin lewat WhatsApp, akan dibantu cari jadwal pengganti atau tutor cadangan sesuai kebutuhan.
-
-B. Kalau user terlihat mau CARI TUTOR (bukan sekadar tanya info), kumpulkan informasi berikut secara natural, satu-dua pertanyaan per balasan, jangan interogasi sekaligus:
-   - Nama pemanggilan
-   - Kelas/jenjang siswa (atau usia, kalau bukan akademik)
-   - Mata pelajaran atau skill yang dibutuhkan
-   - Kendala utama (opsional, kalau user cerita sendiri)
-   - Lokasi (kecamatan/area) dan kota
-   - Jadwal yang diinginkan
-   - Nomor WhatsApp aktif (supaya admin bisa follow up)
-
-C. SETELAH semua data poin di B terkumpul cukup lengkap (minimal: kelas_jenjang, mapel_skill_dibutuhkan, lokasi, whatsapp), tutup dengan bilang admin Ajarin akan menghubungi via WhatsApp dalam waktu dekat untuk penawaran tutor. Lalu, di baris PALING AKHIR balasanmu, sisipkan blok tersembunyi persis format ini (jangan jelaskan blok ini ke user, ini hanya untuk sistem):
-
-<!--LEAD_DATA
-{"nama":"...","whatsapp":"...","kelas_jenjang":"...","mapel_skill_dibutuhkan":"...","kendala":"...","lokasi":"...","kota":"Kudus","jadwal_diinginkan":"..."}
--->
-
-Isi field yang belum diketahui dengan string kosong "". Sisipkan blok ini HANYA SEKALI, saat data sudah cukup lengkap. Jangan pernah mengarang data yang belum disebutkan user.
-
-D. TAGGING KATEGORI (WAJIB DI SETIAP BALASAN, tanpa kecuali): di baris PALING AKHIR setiap balasanmu (setelah blok LEAD_DATA kalau ada), selalu sisipkan satu baris tersembunyi berikut untuk keperluan analisis internal, jangan pernah dijelaskan ke user:
-
-<!--META category="X"-->
-
-Ganti X dengan salah satu kategori paling sesuai dengan isi pertanyaan/pesan user di giliran ini: harga, cara_kerja, kelebihan_ajarin, bandingkan_gojek, komisi_bisnis, kualitas_tutor, cari_tutor, daftar_tutor, keamanan_data, komplain_reschedule, sapaan_umum, lainnya.`;
+  return {
+    found: true,
+    nama: user.nama,
+    total_booking: bookings.length,
+    bookings: bookings.map((b) => ({
+      id: b.id,
+      status: b.status,
+      kategori: b.kategori,
+      harga: b.harga_disepakati,
+      jadwal: b.availability_slots
+        ? `${b.availability_slots.tanggal} ${b.availability_slots.jam_mulai}`
+        : null,
+      link: `/booking-detail.html?id=${b.id}`
+    }))
+  };
+}
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { messages } = req.body;
+    const { messages, context } = req.body;
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: 'messages array required' });
+    // Kalau user sudah login, kasih tau Claude identitasnya biar gak perlu nanya ulang
+    let systemPrompt = SYSTEM_PROMPT;
+    if (context?.email) {
+      systemPrompt += `\n\nUSER YANG SEDANG CHAT SUDAH LOGIN. Email: ${context.email}${context.nama ? `, Nama: ${context.nama}` : ''}. Kalau mereka tanya soal booking mereka sendiri, LANGSUNG pakai tool cek_status_booking dengan email ini tanpa nanya ulang.`;
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: 'Server belum dikonfigurasi (API key kosong)' });
+    let conversationMessages = [...messages];
+    let finalReply = null;
+    let loopGuard = 0;
+
+    while (finalReply === null && loopGuard < 4) {
+      loopGuard++;
+
+      const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-5',
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: conversationMessages,
+          tools: TOOLS
+        })
+      });
+
+      const data = await apiRes.json();
+
+      if (!apiRes.ok) {
+        console.error('Anthropic API error:', data);
+        return res.status(500).json({ error: 'Gagal menghubungi AI', detail: data });
+      }
+
+      const toolUseBlock = data.content.find((b) => b.type === 'tool_use');
+
+      if (toolUseBlock && toolUseBlock.name === 'cek_status_booking') {
+        const toolResult = await cekStatusBooking(toolUseBlock.input.email);
+
+        conversationMessages.push({ role: 'assistant', content: data.content });
+        conversationMessages.push({
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: toolUseBlock.id,
+              content: JSON.stringify(toolResult)
+            }
+          ]
+        });
+        // Loop lagi, kirim ulang ke Claude dengan hasil tool supaya dia rangkai jawaban final
+        continue;
+      }
+
+      // Tidak ada tool_use -> ini jawaban final
+      const textBlock = data.content.find((b) => b.type === 'text');
+      finalReply = textBlock ? textBlock.text : 'Maaf, aku belum bisa jawab itu.';
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 500,
-        system: SYSTEM_PROMPT,
-        messages: messages,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Anthropic API error:', errText);
-      return res.status(502).json({ error: 'Gagal menghubungi AI, coba lagi.' });
-    }
-
-    const data = await response.json();
-    const textBlock = data.content.find((b) => b.type === 'text');
-    const reply = textBlock ? textBlock.text : '';
-
-    return res.status(200).json({ reply });
+    return res.status(200).json({ reply: finalReply });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Terjadi kesalahan di server.' });
+    console.error('Chat handler error:', err);
+    return res.status(500).json({ error: 'Terjadi kesalahan', detail: String(err) });
   }
 };
