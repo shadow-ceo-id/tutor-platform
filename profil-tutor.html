@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profil Tutor — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;margin-bottom:6px;}
+  .subtitle{color:var(--muted);font-size:0.92rem;margin-bottom:28px;}
+
+  .card{
+    background:var(--white);border:1px solid var(--line);border-radius:18px;
+    padding:28px;margin-bottom:20px;
+  }
+
+  .reputasi{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px;}
+  @media(min-width:500px){.reputasi{grid-template-columns:repeat(4,1fr);}}
+  .stat{background:var(--paper-alt);border-radius:12px;padding:16px;text-align:center;}
+  .stat .num{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.3rem;color:var(--teal);}
+  .stat .label{font-size:0.72rem;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:0.03em;}
+  .level-badge{
+    display:inline-block;background:var(--marigold);color:var(--ink);font-weight:700;
+    font-size:0.8rem;padding:6px 14px;border-radius:999px;margin-bottom:20px;
+  }
+
+  label{display:block;font-size:0.86rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px;margin-top:16px;}
+  label:first-of-type{margin-top:0;}
+  input, textarea, select{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;
+    font-size:0.94rem;background:var(--paper);color:var(--ink);width:100%;
+  }
+  textarea{resize:vertical;min-height:90px;}
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--teal);outline-offset:1px;}
+
+  .kategori-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+  .chip{
+    border:1.5px solid var(--line);border-radius:999px;padding:8px 16px;font-size:0.86rem;
+    cursor:pointer;color:var(--muted);font-weight:500;transition:all .15s ease;
+  }
+  .chip.selected{border-color:var(--teal);background:rgba(31,138,118,0.08);color:var(--teal);font-weight:600;}
+
+  .btn{
+    margin-top:22px;background:var(--marigold);color:var(--ink);border:none;
+    padding:13px 28px;border-radius:999px;font-weight:700;font-size:0.96rem;cursor:pointer;width:100%;
+  }
+  .btn:disabled{opacity:0.6;cursor:not-allowed;}
+
+  .msg{font-size:0.86rem;padding:10px 12px;border-radius:8px;margin-top:14px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:rgba(192,57,43,0.1);color:var(--error);}
+  .msg.success{background:rgba(31,138,118,0.1);color:var(--teal);}
+
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+  .nav-link{display:block;text-align:center;margin-top:16px;font-size:0.86rem;color:var(--muted);text-decoration:none;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="loading">Memuat...</div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const KATEGORI_OPTIONS = ['Matematika','Bahasa Inggris','Calistung','Mengaji & Pegon','Musik','Olahraga','SD & SMP','Skill Lainnya'];
+  const LEVEL_LABEL = { baru:'🌱 Tutor Baru', aktif:'⭐ Tutor Aktif', terpercaya:'🏅 Tutor Terpercaya', senior:'👑 Tutor Senior' };
+
+  let currentUser = null;
+  let selectedKategori = [];
+
+  async function init(){
+    const { data: { session } } = await supabase.auth.getSession();
+    if(!session){
+      window.location.href = 'auth.html';
+      return;
+    }
+    currentUser = session.user;
+
+    // Ambil profil tutor kalau udah ada
+    const { data: profile } = await supabase
+      .from('tutor_profiles')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    render(profile);
+  }
+
+  function render(profile){
+    selectedKategori = profile?.kategori || [];
+
+    document.getElementById('app').innerHTML = `
+      <h1>Profil Tutor</h1>
+      <div class="subtitle">Lengkapi profil biar makin gampang ditemuin calon murid</div>
+
+      ${profile ? `
+        <div class="level-badge">${LEVEL_LABEL[profile.level] || '🌱 Tutor Baru'}</div>
+        <div class="reputasi">
+          <div class="stat"><div class="num">${Number(profile.total_jam_mengajar).toFixed(0)}</div><div class="label">Jam Mengajar</div></div>
+          <div class="stat"><div class="num">${profile.total_sesi_selesai}</div><div class="label">Sesi Selesai</div></div>
+          <div class="stat"><div class="num">${profile.total_murid_unik}</div><div class="label">Murid</div></div>
+          <div class="stat"><div class="num">${profile.rating_rata > 0 ? profile.rating_rata : '–'}</div><div class="label">Rating</div></div>
+        </div>
+      ` : ''}
+
+      <div class="card">
+        <form id="profileForm">
+          <label>Kategori yang Diajarkan</label>
+          <div class="kategori-chips" id="kategoriChips">
+            ${KATEGORI_OPTIONS.map(k => `<div class="chip ${selectedKategori.includes(k) ? 'selected' : ''}" data-kategori="${k}">${k}</div>`).join('')}
+          </div>
+
+          <label>Bio Singkat</label>
+          <textarea id="bio" placeholder="Ceritain pengalaman ngajar kamu...">${profile?.bio || ''}</textarea>
+
+          <label>Pengalaman Mengajar (tahun)</label>
+          <input type="number" id="pengalaman" min="0" value="${profile?.pengalaman_tahun || 0}">
+
+          <label>Harga per Jam (Rp)</label>
+          <input type="number" id="harga" min="0" step="5000" placeholder="75000" value="${profile?.harga_per_jam || ''}" required>
+
+          <label>Radius Layanan (km)</label>
+          <input type="number" id="radius" min="1" value="${profile?.radius_layanan_km || 10}">
+
+          <div class="msg" id="profileMsg"></div>
+          <button type="submit" class="btn" id="saveBtn">${profile ? 'Simpan Perubahan' : 'Simpan & Jadi Tutor'}</button>
+        </form>
+      </div>
+
+      <a href="dashboard.html" class="nav-link">← Kembali ke Dashboard</a>
+    `;
+
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const k = chip.dataset.kategori;
+        if(selectedKategori.includes(k)){
+          selectedKategori = selectedKategori.filter(x => x !== k);
+          chip.classList.remove('selected');
+        }else{
+          selectedKategori.push(k);
+          chip.classList.add('selected');
+        }
+      });
+    });
+
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('saveBtn');
+      const msgEl = document.getElementById('profileMsg');
+
+      if(selectedKategori.length === 0){
+        msgEl.textContent = 'Pilih minimal 1 kategori yang kamu ajarkan.';
+        msgEl.className = 'msg show error';
+        return;
+      }
+
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+      const payload = {
+        user_id: currentUser.id,
+        kategori: selectedKategori,
+        bio: document.getElementById('bio').value.trim(),
+        pengalaman_tahun: parseInt(document.getElementById('pengalaman').value) || 0,
+        harga_per_jam: parseInt(document.getElementById('harga').value),
+        radius_layanan_km: parseInt(document.getElementById('radius').value) || 10
+      };
+
+      const { error } = await supabase.from('tutor_profiles').upsert(payload, { onConflict: 'user_id' });
+
+      if(error){
+        msgEl.textContent = 'Gagal simpan: ' + error.message;
+        msgEl.className = 'msg show error';
+        btn.disabled = false; btn.textContent = profile ? 'Simpan Perubahan' : 'Simpan & Jadi Tutor';
+        return;
+      }
+
+      // Pastikan role 'tutor' ada di tabel users
+      const { data: userData } = await supabase.from('users').select('roles').eq('id', currentUser.id).single();
+      const roles = userData?.roles || ['client'];
+      if(!roles.includes('tutor')){
+        await supabase.from('users').update({ roles: [...roles, 'tutor'] }).eq('id', currentUser.id);
+      }
+
+      msgEl.textContent = 'Profil tersimpan!';
+      msgEl.className = 'msg show success';
+      btn.disabled = false;
+
+      setTimeout(() => init(), 1200); // refresh biar reputasi/level ke-load ulang
+    });
+  }
+
+  init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Masuk / Daftar — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .card{
+    background:var(--white);border:1px solid var(--line);border-radius:20px;
+    padding:36px 32px;max-width:420px;width:100%;
+    box-shadow:0 30px 60px -30px rgba(15,42,38,0.28);
+  }
+  .logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.5rem;text-align:center;margin-bottom:6px;}
+  .logo span{color:var(--marigold-deep);}
+  .subtitle{text-align:center;color:var(--muted);font-size:0.9rem;margin-bottom:28px;}
+
+  .tabs{display:flex;background:var(--paper-alt);border-radius:999px;padding:4px;margin-bottom:24px;}
+  .tab{flex:1;text-align:center;padding:10px;border-radius:999px;font-weight:600;font-size:0.9rem;cursor:pointer;color:var(--muted);transition:all .15s ease;}
+  .tab.active{background:var(--ink);color:var(--paper);}
+
+  form{display:none;flex-direction:column;gap:14px;}
+  form.active{display:flex;}
+  label{font-size:0.84rem;font-weight:600;color:var(--ink-soft);margin-bottom:-6px;}
+  input, select{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;
+    font-size:0.94rem;background:var(--paper);color:var(--ink);width:100%;
+  }
+  input:focus, select:focus{outline:2px solid var(--teal);outline-offset:1px;}
+
+  .role-picker{display:flex;gap:10px;}
+  .role-option{
+    flex:1;border:1.5px solid var(--line);border-radius:10px;padding:12px;text-align:center;
+    cursor:pointer;font-size:0.86rem;font-weight:600;color:var(--muted);transition:all .15s ease;
+  }
+  .role-option.selected{border-color:var(--teal);background:rgba(31,138,118,0.08);color:var(--teal);}
+
+  .btn{
+    margin-top:6px;background:var(--marigold);color:var(--ink);border:none;
+    padding:13px;border-radius:999px;font-weight:700;font-size:0.96rem;cursor:pointer;
+    transition:transform .15s ease;
+  }
+  .btn:hover{transform:translateY(-2px);}
+  .btn:disabled{opacity:0.6;cursor:not-allowed;transform:none;}
+
+  .msg{font-size:0.86rem;padding:10px 12px;border-radius:8px;margin-top:4px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:rgba(192,57,43,0.1);color:var(--error);}
+  .msg.success{background:rgba(31,138,118,0.1);color:var(--teal);}
+
+  .back-link{display:block;text-align:center;margin-top:20px;font-size:0.86rem;color:var(--muted);text-decoration:none;}
+  .back-link:hover{color:var(--ink);}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">Ajarin<span>.</span></div>
+  <div class="subtitle">Masuk atau daftar buat mulai belajar / mengajar</div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="login">Masuk</div>
+    <div class="tab" data-tab="signup">Daftar</div>
+  </div>
+
+  <!-- LOGIN -->
+  <form id="loginForm" class="active">
+    <label>Email</label>
+    <input type="email" id="loginEmail" required placeholder="nama@email.com">
+    <label>Password</label>
+    <input type="password" id="loginPassword" required placeholder="••••••••">
+    <div class="msg" id="loginMsg"></div>
+    <button type="submit" class="btn" id="loginBtn">Masuk</button>
+  </form>
+
+  <!-- SIGNUP -->
+  <form id="signupForm">
+    <label>Nama Lengkap</label>
+    <input type="text" id="signupNama" required placeholder="Nama kamu">
+    <label>No. WhatsApp</label>
+    <input type="tel" id="signupHp" required placeholder="08xxxxxxxxxx">
+    <label>Email</label>
+    <input type="email" id="signupEmail" required placeholder="nama@email.com">
+    <label>Password</label>
+    <input type="password" id="signupPassword" required placeholder="Minimal 6 karakter" minlength="6">
+    <label>Daftar sebagai</label>
+    <div class="role-picker">
+      <div class="role-option selected" data-role="client">Cari Tutor</div>
+      <div class="role-option" data-role="tutor">Jadi Tutor</div>
+    </div>
+    <div class="msg" id="signupMsg"></div>
+    <button type="submit" class="btn" id="signupBtn">Daftar</button>
+  </form>
+
+  <a href="index.html" class="back-link">← Kembali ke Beranda</a>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ---- Tab switching ----
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('form').forEach(f => f.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab + 'Form').classList.add('active');
+    });
+  });
+
+  // ---- Role picker ----
+  let selectedRole = 'client';
+  document.querySelectorAll('.role-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.role-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      selectedRole = opt.dataset.role;
+    });
+  });
+
+  function showMsg(el, text, type){
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+
+  // ---- Kalau sudah login, langsung redirect ----
+  (async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if(session){
+      window.location.href = 'dashboard.html';
+    }
+  })();
+
+  // ---- LOGIN ----
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const msgEl = document.getElementById('loginMsg');
+    btn.disabled = true; btn.textContent = 'Memproses...';
+
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if(error){
+      showMsg(msgEl, 'Gagal masuk: ' + (error.message === 'Invalid login credentials' ? 'Email atau password salah.' : error.message), 'error');
+      btn.disabled = false; btn.textContent = 'Masuk';
+      return;
+    }
+
+    showMsg(msgEl, 'Berhasil masuk! Mengalihkan...', 'success');
+    window.location.href = 'dashboard.html';
+  });
+
+  // ---- SIGNUP ----
+  document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('signupBtn');
+    const msgEl = document.getElementById('signupMsg');
+    btn.disabled = true; btn.textContent = 'Memproses...';
+
+    const nama = document.getElementById('signupNama').value.trim();
+    const no_hp = document.getElementById('signupHp').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value;
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { nama, no_hp } // ini yang ditangkap trigger di database buat isi tabel users
+      }
+    });
+
+    if(error){
+      showMsg(msgEl, 'Gagal daftar: ' + error.message, 'error');
+      btn.disabled = false; btn.textContent = 'Daftar';
+      return;
+    }
+
+    // Kalau daftar sebagai tutor, tandai role-nya di tabel users
+    if(selectedRole === 'tutor' && data.user){
+      await supabase.from('users').update({ roles: ['client','tutor'] }).eq('id', data.user.id);
+    }
+
+    showMsg(msgEl, 'Berhasil daftar! Silakan cek email buat verifikasi, lalu masuk.', 'success');
+    btn.disabled = false; btn.textContent = 'Daftar';
+
+    setTimeout(() => {
+      document.querySelector('.tab[data-tab="login"]').click();
+    }, 2000);
+  });
+</script>
+
+</body>
+</html>

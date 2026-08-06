@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jadwal Saya — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;margin-bottom:6px;}
+  .subtitle{color:var(--muted);font-size:0.92rem;margin-bottom:24px;}
+
+  .card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:24px;margin-bottom:20px;}
+  .card h2{font-size:1rem;margin-bottom:16px;}
+
+  .form-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .form-row > div{flex:1;min-width:120px;}
+  label{display:block;font-size:0.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
+  input{
+    border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-family:inherit;
+    font-size:0.9rem;background:var(--paper);color:var(--ink);width:100%;
+  }
+  input:focus{outline:2px solid var(--teal);outline-offset:1px;}
+
+  .btn{
+    margin-top:16px;background:var(--marigold);color:var(--ink);border:none;
+    padding:12px 24px;border-radius:999px;font-weight:700;font-size:0.9rem;cursor:pointer;
+  }
+  .btn:disabled{opacity:0.6;cursor:not-allowed;}
+  .btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--muted);padding:8px 14px;font-size:0.82rem;}
+
+  .slot-list{display:flex;flex-direction:column;gap:10px;}
+  .slot-item{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--paper-alt);border-radius:12px;padding:14px 16px;
+  }
+  .slot-info{font-size:0.9rem;}
+  .slot-info .tanggal{font-weight:700;}
+  .slot-info .jam{color:var(--muted);font-size:0.84rem;}
+  .badge{font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:0.02em;}
+  .badge.kosong{background:rgba(31,138,118,0.12);color:var(--teal);}
+  .badge.dibooking{background:rgba(242,166,61,0.18);color:var(--marigold-deep);}
+  .empty{text-align:center;color:var(--muted);font-size:0.88rem;padding:24px 0;}
+
+  .msg{font-size:0.86rem;padding:10px 12px;border-radius:8px;margin-top:12px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:rgba(192,57,43,0.1);color:var(--error);}
+  .msg.success{background:rgba(31,138,118,0.1);color:var(--teal);}
+
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+  .nav-link{display:block;text-align:center;margin-top:16px;font-size:0.86rem;color:var(--muted);text-decoration:none;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="loading">Memuat...</div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentUser = null;
+
+  async function init(){
+    const { data: { session } } = await supabase.auth.getSession();
+    if(!session){
+      window.location.href = 'auth.html';
+      return;
+    }
+    currentUser = session.user;
+
+    const { data: slots } = await supabase
+      .from('availability_slots')
+      .select('*')
+      .eq('tutor_id', currentUser.id)
+      .gte('tanggal', new Date().toISOString().split('T')[0])
+      .order('tanggal', { ascending: true })
+      .order('jam_mulai', { ascending: true });
+
+    render(slots || []);
+  }
+
+  function formatTanggal(dateStr){
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long' });
+  }
+
+  function render(slots){
+    document.getElementById('app').innerHTML = `
+      <h1>Jadwal Saya</h1>
+      <div class="subtitle">Buka slot jadwal kosong biar calon murid bisa langsung booking</div>
+
+      <div class="card">
+        <h2>+ Tambah Slot Baru</h2>
+        <form id="slotForm">
+          <div class="form-row">
+            <div>
+              <label>Tanggal</label>
+              <input type="date" id="tanggal" required min="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div>
+              <label>Jam Mulai</label>
+              <input type="time" id="jamMulai" required>
+            </div>
+            <div>
+              <label>Jam Selesai</label>
+              <input type="time" id="jamSelesai" required>
+            </div>
+          </div>
+          <div class="msg" id="slotMsg"></div>
+          <button type="submit" class="btn" id="addBtn">Tambah Slot</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Slot Jadwal Kamu</h2>
+        <div class="slot-list" id="slotList">
+          ${slots.length === 0 ? '<div class="empty">Belum ada jadwal. Tambah slot dulu di atas ya.</div>' : slots.map(s => `
+            <div class="slot-item" data-id="${s.id}">
+              <div class="slot-info">
+                <div class="tanggal">${formatTanggal(s.tanggal)}</div>
+                <div class="jam">${s.jam_mulai.slice(0,5)} – ${s.jam_selesai.slice(0,5)}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span class="badge ${s.status}">${s.status === 'kosong' ? 'Kosong' : 'Dibooking'}</span>
+                ${s.status === 'kosong' ? `<button class="btn btn-outline" onclick="hapusSlot('${s.id}')">Hapus</button>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <a href="dashboard.html" class="nav-link">← Kembali ke Dashboard</a>
+    `;
+
+    document.getElementById('slotForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('addBtn');
+      const msgEl = document.getElementById('slotMsg');
+
+      const tanggal = document.getElementById('tanggal').value;
+      const jamMulai = document.getElementById('jamMulai').value;
+      const jamSelesai = document.getElementById('jamSelesai').value;
+
+      if(jamSelesai <= jamMulai){
+        msgEl.textContent = 'Jam selesai harus setelah jam mulai.';
+        msgEl.className = 'msg show error';
+        return;
+      }
+
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+      const { error } = await supabase.from('availability_slots').insert({
+        tutor_id: currentUser.id,
+        tanggal, jam_mulai: jamMulai, jam_selesai: jamSelesai
+      });
+
+      if(error){
+        msgEl.textContent = error.code === '23505'
+          ? 'Kamu udah punya slot di tanggal & jam yang sama.'
+          : 'Gagal tambah slot: ' + error.message;
+        msgEl.className = 'msg show error';
+        btn.disabled = false; btn.textContent = 'Tambah Slot';
+        return;
+      }
+
+      init(); // refresh list
+    });
+  }
+
+  async function hapusSlot(id){
+    if(!confirm('Yakin mau hapus slot ini?')) return;
+    await supabase.from('availability_slots').delete().eq('id', id);
+    init();
+  }
+
+  init();
+</script>
+
+</body>
+</html>

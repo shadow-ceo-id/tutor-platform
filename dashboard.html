@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;}
+  .logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.3rem;}
+  .logo span{color:var(--marigold-deep);}
+  .logout{background:none;border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:0.82rem;color:var(--muted);cursor:pointer;}
+
+  .greeting{margin-bottom:24px;}
+  .greeting h1{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;margin-bottom:4px;}
+  .greeting p{color:var(--muted);font-size:0.92rem;}
+
+  .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .menu-card{
+    background:var(--white);border:1px solid var(--line);border-radius:16px;
+    padding:22px 18px;text-decoration:none;color:var(--ink);transition:transform .15s ease;
+  }
+  .menu-card:hover{transform:translateY(-3px);}
+  .menu-card .icon{font-size:1.6rem;margin-bottom:10px;}
+  .menu-card .title{font-weight:700;font-size:0.94rem;margin-bottom:4px;}
+  .menu-card .desc{font-size:0.8rem;color:var(--muted);}
+
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="loading">Memuat...</div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  async function init(){
+    const { data: { session } } = await supabase.auth.getSession();
+    if(!session){
+      window.location.href = 'auth.html';
+      return;
+    }
+
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('nama, roles')
+      .eq('id', session.user.id)
+      .single();
+
+    const isTutor = userProfile?.roles?.includes('tutor');
+
+    document.getElementById('app').innerHTML = `
+      <div class="topbar">
+        <div class="logo">Ajarin<span>.</span></div>
+        <button class="logout" id="logoutBtn">Keluar</button>
+      </div>
+
+      <div class="greeting">
+        <h1>Halo, ${userProfile?.nama || 'Kak'} 👋</h1>
+        <p>${isTutor ? 'Kelola profil dan jadwal mengajar kamu di sini.' : 'Mau cari tutor apa hari ini?'}</p>
+      </div>
+
+      <div class="menu-grid">
+        ${isTutor ? `
+          <a href="profil-tutor.html" class="menu-card">
+            <div class="icon">👤</div>
+            <div class="title">Profil Tutor</div>
+            <div class="desc">Edit bio, harga, kategori</div>
+          </a>
+          <a href="jadwal-tutor.html" class="menu-card">
+            <div class="icon">📅</div>
+            <div class="title">Jadwal Saya</div>
+            <div class="desc">Atur slot mengajar</div>
+          </a>
+        ` : `
+          <a href="index.html" class="menu-card">
+            <div class="icon">🔍</div>
+            <div class="title">Cari Tutor</div>
+            <div class="desc">Temukan tutor terverifikasi</div>
+          </a>
+          <a href="profil-tutor.html" class="menu-card">
+            <div class="icon">🎓</div>
+            <div class="title">Jadi Tutor</div>
+            <div class="desc">Mulai mengajar di Ajarin</div>
+          </a>
+        `}
+      </div>
+    `;
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'auth.html';
+    });
+  }
+
+  init();
+</script>
+
+</body>
+</html>
