@@ -111,7 +111,7 @@
 <script>
   const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   // ---- Tab switching ----
   document.querySelectorAll('.tab').forEach(tab => {
@@ -140,7 +140,7 @@
 
   // ---- Kalau sudah login, langsung redirect ----
   (async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if(session){
       window.location.href = 'dashboard.html';
     }
@@ -156,7 +156,7 @@
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
     if(error){
       showMsg(msgEl, 'Gagal masuk: ' + (error.message === 'Invalid login credentials' ? 'Email atau password salah.' : error.message), 'error');
@@ -180,7 +180,7 @@
     const email = document.getElementById('signupEmail').value.trim();
     const password = document.getElementById('signupPassword').value;
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabaseClient.auth.signUp({
       email,
       password,
       options: {
@@ -196,7 +196,7 @@
 
     // Kalau daftar sebagai tutor, tandai role-nya di tabel users
     if(selectedRole === 'tutor' && data.user){
-      await supabase.from('users').update({ roles: ['client','tutor'] }).eq('id', data.user.id);
+      await supabaseClient.from('users').update({ roles: ['client','tutor'] }).eq('id', data.user.id);
     }
 
     showMsg(msgEl, 'Berhasil daftar! Silakan cek email buat verifikasi, lalu masuk.', 'success');

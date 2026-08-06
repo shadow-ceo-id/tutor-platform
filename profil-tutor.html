@@ -74,7 +74,7 @@
 <script>
   const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   const KATEGORI_OPTIONS = ['Matematika','Bahasa Inggris','Calistung','Mengaji & Pegon','Musik','Olahraga','SD & SMP','Skill Lainnya'];
   const LEVEL_LABEL = { baru:'🌱 Tutor Baru', aktif:'⭐ Tutor Aktif', terpercaya:'🏅 Tutor Terpercaya', senior:'👑 Tutor Senior' };
@@ -83,7 +83,7 @@
   let selectedKategori = [];
 
   async function init(){
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if(!session){
       window.location.href = 'auth.html';
       return;
@@ -179,7 +179,7 @@
         radius_layanan_km: parseInt(document.getElementById('radius').value) || 10
       };
 
-      const { error } = await supabase.from('tutor_profiles').upsert(payload, { onConflict: 'user_id' });
+      const { error } = await supabaseClient.from('tutor_profiles').upsert(payload, { onConflict: 'user_id' });
 
       if(error){
         msgEl.textContent = 'Gagal simpan: ' + error.message;
@@ -189,10 +189,10 @@
       }
 
       // Pastikan role 'tutor' ada di tabel users
-      const { data: userData } = await supabase.from('users').select('roles').eq('id', currentUser.id).single();
+      const { data: userData } = await supabaseClient.from('users').select('roles').eq('id', currentUser.id).single();
       const roles = userData?.roles || ['client'];
       if(!roles.includes('tutor')){
-        await supabase.from('users').update({ roles: [...roles, 'tutor'] }).eq('id', currentUser.id);
+        await supabaseClient.from('users').update({ roles: [...roles, 'tutor'] }).eq('id', currentUser.id);
       }
 
       msgEl.textContent = 'Profil tersimpan!';

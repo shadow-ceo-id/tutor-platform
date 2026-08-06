@@ -69,12 +69,12 @@
 <script>
   const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let currentUser = null;
 
   async function init(){
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if(!session){
       window.location.href = 'auth.html';
       return;
@@ -162,7 +162,7 @@
 
       btn.disabled = true; btn.textContent = 'Menyimpan...';
 
-      const { error } = await supabase.from('availability_slots').insert({
+      const { error } = await supabaseClient.from('availability_slots').insert({
         tutor_id: currentUser.id,
         tanggal, jam_mulai: jamMulai, jam_selesai: jamSelesai
       });
@@ -182,7 +182,7 @@
 
   async function hapusSlot(id){
     if(!confirm('Yakin mau hapus slot ini?')) return;
-    await supabase.from('availability_slots').delete().eq('id', id);
+    await supabaseClient.from('availability_slots').delete().eq('id', id);
     init();
   }
 

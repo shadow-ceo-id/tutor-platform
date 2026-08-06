@@ -47,10 +47,10 @@
 <script>
   const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   async function init(){
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if(!session){
       window.location.href = 'auth.html';
       return;
@@ -103,7 +103,7 @@
     `;
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await supabase.auth.signOut();
+      await supabaseClient.auth.signOut();
       window.location.href = 'auth.html';
     });
   }
