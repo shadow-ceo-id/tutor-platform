@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pesanan Saya — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  .back-link{font-size:0.86rem;color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:16px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;margin-bottom:6px;}
+  .subtitle{color:var(--muted);font-size:0.92rem;margin-bottom:20px;}
+
+  .tabs{display:flex;background:var(--paper-alt);border-radius:999px;padding:4px;margin-bottom:20px;}
+  .tab{flex:1;text-align:center;padding:10px;border-radius:999px;font-weight:600;font-size:0.86rem;cursor:pointer;color:var(--muted);}
+  .tab.active{background:var(--ink);color:var(--paper);}
+
+  .booking-card{
+    background:var(--white);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;margin-bottom:12px;text-decoration:none;color:var(--ink);display:block;
+  }
+  .booking-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+  .booking-nama{font-weight:700;font-size:0.94rem;}
+  .booking-role{font-size:0.74rem;color:var(--muted);}
+  .status-badge{font-size:0.7rem;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;}
+  .status-menunggu_pembayaran{background:rgba(217,138,34,0.15);color:var(--marigold-deep);}
+  .status-dibayar, .status-menunggu_respon_tutor{background:rgba(31,138,118,0.15);color:var(--teal);}
+  .status-diterima, .status-berlangsung{background:rgba(31,138,118,0.15);color:var(--teal);}
+  .status-selesai{background:rgba(15,42,38,0.1);color:var(--ink);}
+  .status-ditolak_tutor, .status-dibatalkan_client{background:rgba(192,57,43,0.12);color:var(--error);}
+  .booking-detail{font-size:0.84rem;color:var(--muted);}
+
+  .empty{text-align:center;color:var(--muted);padding:60px 0;font-size:0.9rem;}
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <a href="dashboard.html" class="back-link">← Kembali ke Dashboard</a>
+  <h1>Pesanan Saya</h1>
+  <div class="subtitle">Semua booking kamu, sebagai murid maupun tutor</div>
+
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-role="client">Sebagai Murid</div>
+    <div class="tab" data-role="tutor">Sebagai Tutor</div>
+  </div>
+
+  <div id="bookingList">
+    <div class="loading">Memuat...</div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const STATUS_LABEL = {
+    menunggu_pembayaran: 'Menunggu Pembayaran',
+    dibayar: 'Menunggu Respon Tutor',
+    menunggu_respon_tutor: 'Menunggu Respon Tutor',
+    diterima: 'Diterima',
+    berlangsung: 'Berlangsung',
+    selesai: 'Selesai',
+    ditolak_tutor: 'Ditolak',
+    dibatalkan_client: 'Dibatalkan'
+  };
+
+  let currentUser = null;
+  let activeRole = 'client';
+  let allBookings = { client: [], tutor: [] };
+
+  function formatTanggalJam(slot){
+    if(!slot) return '-';
+    const d = new Date(slot.tanggal + 'T00:00:00');
+    return d.toLocaleDateString('id-ID', { weekday:'short', day:'numeric', month:'short' }) + ', ' + slot.jam_mulai.slice(0,5);
+  }
+
+  async function init(){
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(!session){ window.location.href = 'auth.html'; return; }
+    currentUser = session.user;
+
+    const { data: asClient } = await supabaseClient
+      .from('bookings')
+      .select('*, availability_slots(*), tutor:tutor_id(nama)')
+      .eq('client_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    const { data: asTutor } = await supabaseClient
+      .from('bookings')
+      .select('*, availability_slots(*), client:client_id(nama)')
+      .eq('tutor_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    allBookings.client = asClient || [];
+    allBookings.tutor = asTutor || [];
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeRole = tab.dataset.role;
+        render();
+      });
+    });
+
+    render();
+  }
+
+  function render(){
+    const bookings = allBookings[activeRole];
+    const listEl = document.getElementById('bookingList');
+
+    if(bookings.length === 0){
+      listEl.innerHTML = `<div class="empty">Belum ada pesanan sebagai ${activeRole === 'client' ? 'murid' : 'tutor'}.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = bookings.map(b => `
+      <a href="booking-detail.html?id=${b.id}" class="booking-card">
+        <div class="booking-top">
+          <div>
+            <div class="booking-nama">${activeRole === 'client' ? (b.tutor?.nama || 'Tutor') : (b.client?.nama || 'Murid')}</div>
+            <div class="booking-role">${b.kategori || '-'} · ${formatTanggalJam(b.availability_slots)}</div>
+          </div>
+          <span class="status-badge status-${b.status}">${STATUS_LABEL[b.status] || b.status}</span>
+        </div>
+        <div class="booking-detail">Rp${Number(b.harga_disepakati).toLocaleString('id-ID')}</div>
+      </a>
+    `).join('');
+  }
+
+  init();
+</script>
+
+</body>
+</html>

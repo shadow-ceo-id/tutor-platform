@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notifikasi — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:560px;margin:0 auto;}
+  .back-link{font-size:0.86rem;color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:16px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;margin-bottom:20px;}
+
+  .notif-item{
+    background:var(--white);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;margin-bottom:10px;text-decoration:none;color:var(--ink);display:block;
+    position:relative;
+  }
+  .notif-item.unread{border-left:3px solid var(--teal);background:rgba(31,138,118,0.04);}
+  .notif-title{font-weight:700;font-size:0.9rem;margin-bottom:3px;}
+  .notif-body{font-size:0.84rem;color:var(--muted);}
+  .notif-time{font-size:0.72rem;color:var(--muted);margin-top:6px;}
+
+  .empty{text-align:center;color:var(--muted);padding:60px 0;font-size:0.9rem;}
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <a href="dashboard.html" class="back-link">← Kembali ke Dashboard</a>
+  <h1>Notifikasi</h1>
+  <div id="notifList"><div class="loading">Memuat...</div></div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  function timeAgo(dateStr){
+    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    if(diff < 60) return 'Baru saja';
+    if(diff < 3600) return Math.floor(diff/60) + ' menit lalu';
+    if(diff < 86400) return Math.floor(diff/3600) + ' jam lalu';
+    return Math.floor(diff/86400) + ' hari lalu';
+  }
+
+  async function init(){
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(!session){ window.location.href = 'auth.html'; return; }
+
+    const { data: notifs } = await supabaseClient
+      .from('notifications')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    render(notifs || []);
+
+    // Mark semua yang unread jadi read setelah dilihat
+    const unreadIds = (notifs || []).filter(n => !n.is_read).map(n => n.id);
+    if(unreadIds.length > 0){
+      await supabaseClient.from('notifications').update({ is_read: true }).in('id', unreadIds);
+    }
+  }
+
+  function render(notifs){
+    const el = document.getElementById('notifList');
+    if(notifs.length === 0){
+      el.innerHTML = '<div class="empty">Belum ada notifikasi.</div>';
+      return;
+    }
+
+    el.innerHTML = notifs.map(n => `
+      <a href="${n.booking_id ? 'booking-detail.html?id=' + n.booking_id : '#'}" class="notif-item ${!n.is_read ? 'unread' : ''}">
+        <div class="notif-title">${n.judul}</div>
+        <div class="notif-body">${n.isi}</div>
+        <div class="notif-time">${timeAgo(n.created_at)}</div>
+      </a>
+    `).join('');
+  }
+
+  init();
+</script>
+
+</body>
+</html>
