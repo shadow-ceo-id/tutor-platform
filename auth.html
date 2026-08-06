@@ -82,6 +82,7 @@
     <input type="email" id="loginEmail" required placeholder="nama@email.com">
     <label>Password</label>
     <input type="password" id="loginPassword" required placeholder="••••••••">
+    <a href="#" id="forgotPasswordLink" style="font-size:0.82rem;color:var(--teal);text-decoration:none;align-self:flex-end;margin-top:-6px;">Lupa password?</a>
     <div class="msg" id="loginMsg"></div>
     <button type="submit" class="btn" id="loginBtn">Masuk</button>
   </form>
@@ -145,6 +146,29 @@
       window.location.href = 'dashboard.html';
     }
   })();
+
+  // ---- LUPA PASSWORD ----
+  document.getElementById('forgotPasswordLink').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const msgEl = document.getElementById('loginMsg');
+
+    if(!email){
+      showMsg(msgEl, 'Isi dulu email kamu di atas, baru klik "Lupa password?"', 'error');
+      return;
+    }
+
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/reset-password.html'
+    });
+
+    if(error){
+      showMsg(msgEl, 'Gagal kirim email reset: ' + error.message, 'error');
+      return;
+    }
+
+    showMsg(msgEl, 'Link reset password sudah dikirim ke email kamu. Cek inbox (atau folder spam).', 'success');
+  });
 
   // ---- LOGIN ----
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
