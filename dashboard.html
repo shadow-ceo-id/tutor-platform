@@ -111,9 +111,11 @@
 
     const { data: userProfile } = await supabaseClient
       .from('users')
-      .select('nama, roles')
+      .select('nama, roles, email')
       .eq('id', session.user.id)
       .single();
+
+    chatUserContext = { email: userProfile?.email || session.user.email, nama: userProfile?.nama };
 
     const { count: unreadCount } = await supabaseClient
       .from('notifications')
@@ -218,6 +220,7 @@
   const CHAT_API = '/api/chat';
   let chatHistory = [];
   let chatOpened = false;
+  let chatUserContext = null; // diisi dari init() setelah tau siapa yang login
 
   function openChat(){
     document.getElementById('chatOverlay').classList.add('open');
@@ -282,7 +285,7 @@
         const res = await fetch(CHAT_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: chatHistory })
+          body: JSON.stringify({ messages: chatHistory, context: chatUserContext })
         });
         const data = await res.json();
         hideTyping();
