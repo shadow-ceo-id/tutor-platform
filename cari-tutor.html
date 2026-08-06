@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cari Tutor — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:900px;margin:0 auto;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
+  .logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.3rem;text-decoration:none;color:var(--ink);}
+  .logo span{color:var(--marigold-deep);}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;margin-bottom:6px;}
+  .subtitle{color:var(--muted);font-size:0.92rem;margin-bottom:22px;}
+
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;}
+  .filter-chip{
+    border:1.5px solid var(--line);border-radius:999px;padding:8px 16px;font-size:0.85rem;
+    cursor:pointer;color:var(--muted);font-weight:500;background:var(--white);
+  }
+  .filter-chip.active{border-color:var(--teal);background:rgba(31,138,118,0.08);color:var(--teal);font-weight:600;}
+
+  .tutor-grid{display:grid;gap:16px;}
+  .tutor-card{
+    background:var(--white);border:1px solid var(--line);border-radius:16px;
+    padding:20px;text-decoration:none;color:var(--ink);display:flex;gap:16px;
+    transition:transform .15s ease;
+  }
+  .tutor-card:hover{transform:translateY(-2px);}
+  .avatar{
+    width:56px;height:56px;border-radius:50%;background:var(--paper-alt);
+    display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;
+    color:var(--teal);flex-shrink:0;
+  }
+  .tutor-info{flex:1;min-width:0;}
+  .tutor-name{font-weight:700;font-size:1rem;margin-bottom:2px;display:flex;align-items:center;gap:8px;}
+  .level-tag{font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--marigold);color:var(--ink);}
+  .tutor-kategori{font-size:0.84rem;color:var(--muted);margin-bottom:8px;}
+  .tutor-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:0.8rem;color:var(--muted);}
+  .tutor-meta span{display:flex;align-items:center;gap:4px;}
+  .tutor-harga{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1rem;color:var(--teal);white-space:nowrap;}
+
+  .empty{text-align:center;color:var(--muted);padding:60px 0;}
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <a href="index.html" class="logo">Ajarin<span>.</span></a>
+    <a href="dashboard.html" class="logo" style="font-size:0.86rem;color:var(--muted);">Dashboard →</a>
+  </div>
+
+  <h1>Cari Tutor</h1>
+  <div class="subtitle">Semua tutor sudah terverifikasi, harga fix tanpa nego</div>
+
+  <div class="filters" id="filters"></div>
+  <div class="tutor-grid" id="tutorGrid">
+    <div class="loading">Memuat tutor...</div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const KATEGORI_OPTIONS = ['Semua','Matematika','Bahasa Inggris','Calistung','Mengaji & Pegon','Musik','Olahraga','SD & SMP','Skill Lainnya'];
+  const LEVEL_LABEL = { baru:'🌱 Baru', aktif:'⭐ Aktif', terpercaya:'🏅 Terpercaya', senior:'👑 Senior' };
+
+  let allTutors = [];
+  let activeFilter = 'Semua';
+
+  function formatRupiah(n){
+    return 'Rp' + Number(n).toLocaleString('id-ID');
+  }
+
+  function renderFilters(){
+    document.getElementById('filters').innerHTML = KATEGORI_OPTIONS.map(k =>
+      `<div class="filter-chip ${k === activeFilter ? 'active' : ''}" data-k="${k}">${k}</div>`
+    ).join('');
+
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        activeFilter = chip.dataset.k;
+        renderFilters();
+        renderTutors();
+      });
+    });
+  }
+
+  function renderTutors(){
+    const filtered = activeFilter === 'Semua'
+      ? allTutors
+      : allTutors.filter(t => t.kategori && t.kategori.includes(activeFilter));
+
+    const grid = document.getElementById('tutorGrid');
+
+    if(filtered.length === 0){
+      grid.innerHTML = '<div class="empty">Belum ada tutor untuk kategori ini.</div>';
+      return;
+    }
+
+    grid.innerHTML = filtered.map(t => `
+      <a href="tutor-detail.html?id=${t.user_id}" class="tutor-card">
+        <div class="avatar">${(t.users?.nama || '?').charAt(0).toUpperCase()}</div>
+        <div class="tutor-info">
+          <div class="tutor-name">
+            ${t.users?.nama || 'Tutor'}
+            <span class="level-tag">${LEVEL_LABEL[t.level] || '🌱 Baru'}</span>
+          </div>
+          <div class="tutor-kategori">${(t.kategori || []).join(', ')}</div>
+          <div class="tutor-meta">
+            <span>⏱ ${Number(t.total_jam_mengajar).toFixed(0)} jam</span>
+            <span>🎓 ${t.total_sesi_selesai} sesi</span>
+            <span>⭐ ${t.rating_rata > 0 ? t.rating_rata : 'Baru'}</span>
+          </div>
+        </div>
+        <div class="tutor-harga">${formatRupiah(t.harga_per_jam)}<br><span style="font-size:0.7rem;color:var(--muted);font-weight:400;">/jam</span></div>
+      </a>
+    `).join('');
+  }
+
+  async function init(){
+    const { data, error } = await supabaseClient
+      .from('tutor_profiles')
+      .select('*, users(nama, kota)')
+      .order('total_sesi_selesai', { ascending: false });
+
+    if(error){
+      document.getElementById('tutorGrid').innerHTML = '<div class="empty">Gagal memuat data tutor.</div>';
+      console.error(error);
+      return;
+    }
+
+    allTutors = data || [];
+    renderFilters();
+    renderTutors();
+  }
+
+  init();
+</script>
+
+</body>
+</html>

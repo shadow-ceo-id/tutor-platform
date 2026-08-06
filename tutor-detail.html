@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detail Tutor — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  .back-link{font-size:0.86rem;color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:16px;}
+
+  .profile-header{display:flex;gap:16px;align-items:flex-start;margin-bottom:20px;}
+  .avatar{
+    width:72px;height:72px;border-radius:50%;background:var(--paper-alt);
+    display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;
+    color:var(--teal);flex-shrink:0;
+  }
+  .profile-name{font-family:'Space Grotesk',sans-serif;font-size:1.4rem;font-weight:700;margin-bottom:4px;}
+  .level-tag{font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--marigold);color:var(--ink);display:inline-block;margin-bottom:6px;}
+  .profile-kategori{font-size:0.88rem;color:var(--muted);}
+
+  .reputasi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+  .stat{background:var(--paper-alt);border-radius:12px;padding:14px 8px;text-align:center;}
+  .stat .num{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.1rem;color:var(--teal);}
+  .stat .label{font-size:0.65rem;color:var(--muted);margin-top:2px;text-transform:uppercase;}
+
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px;}
+  .card h2{font-size:0.95rem;margin-bottom:12px;}
+  .bio{font-size:0.9rem;color:var(--ink-soft);line-height:1.6;}
+
+  .harga-box{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid var(--line);margin-top:14px;}
+  .harga-label{font-size:0.84rem;color:var(--muted);}
+  .harga-value{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.3rem;color:var(--ink);}
+
+  .slot-list{display:flex;flex-direction:column;gap:10px;}
+  .slot-item{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--paper-alt);border-radius:12px;padding:14px 16px;cursor:pointer;
+    border:2px solid transparent;transition:border-color .15s ease;
+  }
+  .slot-item:hover{border-color:var(--teal);}
+  .slot-item.selected{border-color:var(--teal);background:rgba(31,138,118,0.1);}
+  .slot-info .tanggal{font-weight:700;font-size:0.92rem;}
+  .slot-info .jam{color:var(--muted);font-size:0.82rem;}
+  .empty{text-align:center;color:var(--muted);font-size:0.88rem;padding:24px 0;}
+
+  label{display:block;font-size:0.84rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px;margin-top:14px;}
+  textarea{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;
+    font-size:0.9rem;background:var(--paper);color:var(--ink);width:100%;min-height:70px;resize:vertical;
+  }
+
+  .btn{
+    margin-top:18px;background:var(--marigold);color:var(--ink);border:none;
+    padding:14px;border-radius:999px;font-weight:700;font-size:0.96rem;cursor:pointer;width:100%;
+  }
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+  .msg{font-size:0.86rem;padding:10px 12px;border-radius:8px;margin-top:12px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:rgba(192,57,43,0.1);color:var(--error);}
+  .msg.success{background:rgba(31,138,118,0.1);color:var(--teal);}
+
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="loading">Memuat...</div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const LEVEL_LABEL = { baru:'🌱 Tutor Baru', aktif:'⭐ Tutor Aktif', terpercaya:'🏅 Tutor Terpercaya', senior:'👑 Tutor Senior' };
+
+  const params = new URLSearchParams(window.location.search);
+  const tutorId = params.get('id');
+
+  let currentUser = null;
+  let selectedSlot = null;
+  let tutorProfile = null;
+
+  function formatRupiah(n){ return 'Rp' + Number(n).toLocaleString('id-ID'); }
+  function formatTanggal(dateStr){
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long' });
+  }
+
+  async function init(){
+    if(!tutorId){
+      document.getElementById('app').innerHTML = '<div class="empty">Tutor tidak ditemukan.</div>';
+      return;
+    }
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    currentUser = session?.user || null;
+
+    const { data: profile, error } = await supabaseClient
+      .from('tutor_profiles')
+      .select('*, users(nama, kota)')
+      .eq('user_id', tutorId)
+      .single();
+
+    if(error || !profile){
+      document.getElementById('app').innerHTML = '<div class="empty">Tutor tidak ditemukan.</div>';
+      return;
+    }
+    tutorProfile = profile;
+
+    const { data: slots } = await supabaseClient
+      .from('availability_slots')
+      .select('*')
+      .eq('tutor_id', tutorId)
+      .eq('status', 'kosong')
+      .gte('tanggal', new Date().toISOString().split('T')[0])
+      .order('tanggal', { ascending: true })
+      .order('jam_mulai', { ascending: true });
+
+    render(profile, slots || []);
+  }
+
+  function render(profile, slots){
+    document.getElementById('app').innerHTML = `
+      <a href="cari-tutor.html" class="back-link">← Kembali ke Daftar Tutor</a>
+
+      <div class="profile-header">
+        <div class="avatar">${(profile.users?.nama || '?').charAt(0).toUpperCase()}</div>
+        <div>
+          <div class="profile-name">${profile.users?.nama || 'Tutor'}</div>
+          <div class="level-tag">${LEVEL_LABEL[profile.level] || '🌱 Tutor Baru'}</div>
+          <div class="profile-kategori">${(profile.kategori || []).join(', ')} · ${profile.users?.kota || ''}</div>
+        </div>
+      </div>
+
+      <div class="reputasi">
+        <div class="stat"><div class="num">${Number(profile.total_jam_mengajar).toFixed(0)}</div><div class="label">Jam</div></div>
+        <div class="stat"><div class="num">${profile.total_sesi_selesai}</div><div class="label">Sesi</div></div>
+        <div class="stat"><div class="num">${profile.total_murid_unik}</div><div class="label">Murid</div></div>
+        <div class="stat"><div class="num">${profile.rating_rata > 0 ? profile.rating_rata : '–'}</div><div class="label">Rating</div></div>
+      </div>
+
+      ${profile.bio ? `
+        <div class="card">
+          <h2>Tentang Tutor</h2>
+          <div class="bio">${profile.bio}</div>
+          <div class="harga-box">
+            <div class="harga-label">Harga per jam</div>
+            <div class="harga-value">${formatRupiah(profile.harga_per_jam)}</div>
+          </div>
+        </div>
+      ` : `
+        <div class="card">
+          <div class="harga-box" style="border-top:none;margin-top:0;padding-top:0;">
+            <div class="harga-label">Harga per jam</div>
+            <div class="harga-value">${formatRupiah(profile.harga_per_jam)}</div>
+          </div>
+        </div>
+      `}
+
+      <div class="card">
+        <h2>Pilih Jadwal</h2>
+        <div class="slot-list" id="slotList">
+          ${slots.length === 0 ? '<div class="empty">Tutor belum membuka slot jadwal.</div>' : slots.map(s => `
+            <div class="slot-item" data-id="${s.id}" data-tanggal="${s.tanggal}" data-mulai="${s.jam_mulai}" data-selesai="${s.jam_selesai}">
+              <div class="slot-info">
+                <div class="tanggal">${formatTanggal(s.tanggal)}</div>
+                <div class="jam">${s.jam_mulai.slice(0,5)} – ${s.jam_selesai.slice(0,5)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        ${slots.length > 0 ? `
+          <label>Catatan / Materi yang Dibutuhkan (opsional)</label>
+          <textarea id="catatan" placeholder="Misal: butuh bantuan persiapan ujian matematika kelas 6"></textarea>
+
+          <div class="msg" id="bookingMsg"></div>
+          <button class="btn" id="bookBtn" disabled>Pilih Jadwal Dulu</button>
+        ` : ''}
+      </div>
+    `;
+
+    document.querySelectorAll('.slot-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.slot-item').forEach(i => i.classList.remove('selected'));
+        item.classList.add('selected');
+        selectedSlot = {
+          id: item.dataset.id,
+          tanggal: item.dataset.tanggal,
+          jam_mulai: item.dataset.mulai,
+          jam_selesai: item.dataset.selesai
+        };
+        const btn = document.getElementById('bookBtn');
+        btn.disabled = false;
+        btn.textContent = `Pesan Slot Ini — ${formatRupiah(profile.harga_per_jam)}`;
+      });
+    });
+
+    const bookBtn = document.getElementById('bookBtn');
+    if(bookBtn){
+      bookBtn.addEventListener('click', handleBooking);
+    }
+  }
+
+  async function handleBooking(){
+    if(!currentUser){
+      window.location.href = 'auth.html';
+      return;
+    }
+    if(!selectedSlot) return;
+
+    const btn = document.getElementById('bookBtn');
+    const msgEl = document.getElementById('bookingMsg');
+    btn.disabled = true; btn.textContent = 'Memproses...';
+
+    const { data: booking, error } = await supabaseClient
+      .from('bookings')
+      .insert({
+        slot_id: selectedSlot.id,
+        tutor_id: tutorId,
+        client_id: currentUser.id,
+        kategori: (tutorProfile.kategori || [])[0] || null,
+        catatan_client: document.getElementById('catatan').value.trim(),
+        harga_disepakati: tutorProfile.harga_per_jam,
+        status: 'menunggu_pembayaran',
+        pin_konfirmasi: String(Math.floor(1000 + Math.random() * 9000))
+      })
+      .select()
+      .single();
+
+    if(error){
+      msgEl.textContent = 'Gagal membuat booking: ' + error.message;
+      msgEl.className = 'msg show error';
+      btn.disabled = false;
+      btn.textContent = `Pesan Slot Ini`;
+      return;
+    }
+
+    window.location.href = 'booking-detail.html?id=' + booking.id;
+  }
+
+  init();
+</script>
+
+</body>
+</html>

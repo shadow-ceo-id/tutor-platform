@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detail Booking — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:560px;margin:0 auto;}
+  .back-link{font-size:0.86rem;color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:16px;}
+
+  .status-badge{
+    display:inline-block;font-size:0.78rem;font-weight:700;padding:6px 14px;
+    border-radius:999px;margin-bottom:16px;
+  }
+  .status-menunggu_pembayaran{background:rgba(217,138,34,0.15);color:var(--marigold-deep);}
+  .status-dibayar, .status-menunggu_respon_tutor{background:rgba(31,138,118,0.15);color:var(--teal);}
+  .status-diterima, .status-berlangsung{background:rgba(31,138,118,0.15);color:var(--teal);}
+  .status-selesai{background:rgba(15,42,38,0.1);color:var(--ink);}
+  .status-ditolak_tutor, .status-dibatalkan_client{background:rgba(192,57,43,0.12);color:var(--error);}
+
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px;}
+  .card h2{font-size:0.92rem;margin-bottom:14px;color:var(--muted);text-transform:uppercase;letter-spacing:0.02em;}
+  .row{display:flex;justify-content:space-between;padding:8px 0;font-size:0.92rem;border-bottom:1px solid var(--paper-alt);}
+  .row:last-child{border-bottom:none;}
+  .row .label{color:var(--muted);}
+  .row .value{font-weight:600;text-align:right;}
+
+  .pin-box{
+    background:var(--paper-alt);border-radius:12px;padding:20px;text-align:center;margin-top:8px;
+  }
+  .pin-box .pin-num{font-family:'Space Grotesk',sans-serif;font-size:2rem;font-weight:700;letter-spacing:0.2em;color:var(--teal);}
+  .pin-box .pin-label{font-size:0.8rem;color:var(--muted);margin-top:6px;}
+
+  input{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;
+    font-size:1.1rem;text-align:center;letter-spacing:0.3em;background:var(--paper);color:var(--ink);width:100%;
+    margin-top:10px;
+  }
+
+  .btn{
+    background:var(--marigold);color:var(--ink);border:none;
+    padding:13px;border-radius:999px;font-weight:700;font-size:0.94rem;cursor:pointer;width:100%;margin-top:10px;
+  }
+  .btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--muted);}
+  .btn-danger{background:transparent;border:1.5px solid var(--error);color:var(--error);}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+  .msg{font-size:0.86rem;padding:10px 12px;border-radius:8px;margin-top:12px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:rgba(192,57,43,0.1);color:var(--error);}
+  .msg.success{background:rgba(31,138,118,0.1);color:var(--teal);}
+  .msg.info{background:rgba(217,138,34,0.1);color:var(--marigold-deep);}
+
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="loading">Memuat...</div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const STATUS_LABEL = {
+    menunggu_pembayaran: 'Menunggu Pembayaran',
+    dibayar: 'Menunggu Respon Tutor',
+    menunggu_respon_tutor: 'Menunggu Respon Tutor',
+    diterima: 'Diterima Tutor',
+    berlangsung: 'Sesi Berlangsung',
+    selesai: 'Selesai',
+    ditolak_tutor: 'Ditolak Tutor',
+    dibatalkan_client: 'Dibatalkan'
+  };
+
+  const params = new URLSearchParams(window.location.search);
+  const bookingId = params.get('id');
+  let currentUser = null;
+  let booking = null;
+  let isTutor = false;
+
+  function formatRupiah(n){ return 'Rp' + Number(n).toLocaleString('id-ID'); }
+  function formatTanggalJam(slot){
+    if(!slot) return '-';
+    const d = new Date(slot.tanggal + 'T00:00:00');
+    return d.toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long' }) + ', ' + slot.jam_mulai.slice(0,5) + '–' + slot.jam_selesai.slice(0,5);
+  }
+
+  async function init(){
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(!session){ window.location.href = 'auth.html'; return; }
+    currentUser = session.user;
+
+    const { data, error } = await supabaseClient
+      .from('bookings')
+      .select('*, availability_slots(*), tutor:tutor_id(nama), client:client_id(nama)')
+      .eq('id', bookingId)
+      .single();
+
+    if(error || !data){
+      document.getElementById('app').innerHTML = '<div class="loading">Booking tidak ditemukan.</div>';
+      return;
+    }
+
+    booking = data;
+    isTutor = currentUser.id === booking.tutor_id;
+    render();
+  }
+
+  function render(){
+    const slot = booking.availability_slots;
+
+    document.getElementById('app').innerHTML = `
+      <a href="dashboard.html" class="back-link">← Kembali ke Dashboard</a>
+
+      <div class="status-badge status-${booking.status}">${STATUS_LABEL[booking.status] || booking.status}</div>
+
+      <div class="card">
+        <h2>Detail Sesi</h2>
+        <div class="row"><span class="label">${isTutor ? 'Murid' : 'Tutor'}</span><span class="value">${isTutor ? booking.client?.nama : booking.tutor?.nama}</span></div>
+        <div class="row"><span class="label">Kategori</span><span class="value">${booking.kategori || '-'}</span></div>
+        <div class="row"><span class="label">Jadwal</span><span class="value">${formatTanggalJam(slot)}</span></div>
+        <div class="row"><span class="label">Harga</span><span class="value">${formatRupiah(booking.harga_disepakati)}</span></div>
+        ${booking.catatan_client ? `<div class="row"><span class="label">Catatan</span><span class="value">${booking.catatan_client}</span></div>` : ''}
+      </div>
+
+      <div id="actionArea"></div>
+    `;
+
+    renderActions();
+  }
+
+  function renderActions(){
+    const area = document.getElementById('actionArea');
+
+    // ---- CLIENT: belum bayar ----
+    if(!isTutor && booking.status === 'menunggu_pembayaran'){
+      area.innerHTML = `
+        <div class="card">
+          <h2>Pembayaran</h2>
+          <p style="font-size:0.86rem;color:var(--muted);margin-bottom:10px;">
+            Dana kamu akan ditahan aman oleh Ajarin sampai sesi selesai dikonfirmasi kedua pihak.
+          </p>
+          <div class="msg show info">⚠️ Payment gateway (Midtrans/Xendit) belum terhubung — ini masih simulasi manual untuk testing alur. Jangan gunakan uang asli dulu.</div>
+          <button class="btn" id="payBtn">Bayar ${formatRupiah(booking.harga_disepakati)} (Simulasi)</button>
+        </div>
+      `;
+      document.getElementById('payBtn').addEventListener('click', simulatePayment);
+      return;
+    }
+
+    // ---- TUTOR: perlu terima/tolak ----
+    if(isTutor && (booking.status === 'dibayar' || booking.status === 'menunggu_respon_tutor')){
+      area.innerHTML = `
+        <div class="card">
+          <h2>Konfirmasi Booking</h2>
+          <p style="font-size:0.86rem;color:var(--muted);margin-bottom:10px;">
+            Ada permintaan booking baru. Terima kalau kamu bisa mengajar di jadwal ini.
+          </p>
+          <button class="btn" id="acceptBtn">Terima Booking</button>
+          <button class="btn btn-danger" id="rejectBtn">Tolak</button>
+          <div class="msg" id="actionMsg"></div>
+        </div>
+      `;
+      document.getElementById('acceptBtn').addEventListener('click', () => updateBookingStatus('diterima'));
+      document.getElementById('rejectBtn').addEventListener('click', () => updateBookingStatus('ditolak_tutor'));
+      return;
+    }
+
+    // ---- Diterima: tampilkan PIN & tombol konfirmasi selesai ----
+    if(booking.status === 'diterima' || booking.status === 'berlangsung'){
+      area.innerHTML = `
+        <div class="card">
+          <h2>${!isTutor ? 'PIN Konfirmasi Sesi' : 'Selesaikan Sesi'}</h2>
+          ${!isTutor ? `
+            <p style="font-size:0.86rem;color:var(--muted);margin-bottom:10px;">
+              Kasih kode ini ke tutor SETELAH sesi belajar selesai, biar dana bisa dilepas.
+            </p>
+            <div class="pin-box">
+              <div class="pin-num">${booking.pin_konfirmasi}</div>
+              <div class="pin-label">Kode Konfirmasi</div>
+            </div>
+          ` : `
+            <p style="font-size:0.86rem;color:var(--muted);margin-bottom:10px;">
+              Minta kode 4 digit dari murid setelah sesi selesai, lalu masukkan di sini.
+            </p>
+            <input type="text" id="pinInput" maxlength="4" placeholder="0000" inputmode="numeric">
+            <button class="btn" id="confirmPinBtn">Konfirmasi Sesi Selesai</button>
+            <div class="msg" id="pinMsg"></div>
+          `}
+        </div>
+      `;
+      if(isTutor){
+        document.getElementById('confirmPinBtn').addEventListener('click', confirmPin);
+      }
+      return;
+    }
+
+    // ---- Selesai ----
+    if(booking.status === 'selesai'){
+      area.innerHTML = `
+        <div class="card">
+          <h2>Sesi Selesai ✅</h2>
+          <p style="font-size:0.86rem;color:var(--muted);">Terima kasih! Jangan lupa kasih review ya.</p>
+        </div>
+      `;
+    }
+  }
+
+  async function simulatePayment(){
+    const btn = document.getElementById('payBtn');
+    btn.disabled = true; btn.textContent = 'Memproses...';
+
+    // Catatan: di production, ini harus lewat backend (Vercel function) yang
+    // memanggil Midtrans/Xendit, verifikasi callback, BARU update status di sini.
+    // Ini simulasi langsung dari client HANYA untuk testing alur booking-lock.
+    const { error } = await supabaseClient
+      .from('bookings')
+      .update({ status: 'dibayar' })
+      .eq('id', booking.id);
+
+    if(error){
+      alert('Gagal update status: ' + error.message);
+      btn.disabled = false; btn.textContent = 'Bayar (Simulasi)';
+      return;
+    }
+
+    booking.status = 'dibayar';
+    render();
+  }
+
+  async function updateBookingStatus(newStatus){
+    const { error } = await supabaseClient
+      .from('bookings')
+      .update({ status: newStatus })
+      .eq('id', booking.id);
+
+    if(error){
+      document.getElementById('actionMsg').textContent = 'Gagal: ' + error.message;
+      document.getElementById('actionMsg').className = 'msg show error';
+      return;
+    }
+
+    // Kalau ditolak, kembalikan slot jadi kosong lagi
+    if(newStatus === 'ditolak_tutor' && booking.slot_id){
+      await supabaseClient.from('availability_slots').update({ status: 'kosong' }).eq('id', booking.slot_id);
+    }
+
+    booking.status = newStatus;
+    render();
+  }
+
+  async function confirmPin(){
+    const input = document.getElementById('pinInput');
+    const msgEl = document.getElementById('pinMsg');
+    const btn = document.getElementById('confirmPinBtn');
+
+    if(input.value.trim() !== booking.pin_konfirmasi){
+      msgEl.textContent = 'PIN salah. Coba tanya lagi ke murid.';
+      msgEl.className = 'msg show error';
+      return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Memproses...';
+
+    const { error } = await supabaseClient
+      .from('bookings')
+      .update({
+        status: 'selesai',
+        dikonfirmasi_tutor_at: new Date().toISOString(),
+        dikonfirmasi_client_at: new Date().toISOString()
+      })
+      .eq('id', booking.id);
+
+    if(error){
+      msgEl.textContent = 'Gagal konfirmasi: ' + error.message;
+      msgEl.className = 'msg show error';
+      btn.disabled = false; btn.textContent = 'Konfirmasi Sesi Selesai';
+      return;
+    }
+
+    booking.status = 'selesai';
+    render();
+  }
+
+  init();
+</script>
+
+</body>
+</html>
