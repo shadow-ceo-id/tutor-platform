@@ -27,6 +27,7 @@
   .status-diterima, .status-berlangsung{background:rgba(31,138,118,0.15);color:var(--teal);}
   .status-selesai{background:rgba(15,42,38,0.1);color:var(--ink);}
   .status-ditolak_tutor, .status-dibatalkan_client{background:rgba(192,57,43,0.12);color:var(--error);}
+  .status-disengketakan{background:rgba(192,57,43,0.18);color:var(--error);}
 
   .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px;}
   .card h2{font-size:0.92rem;margin-bottom:14px;color:var(--muted);text-transform:uppercase;letter-spacing:0.02em;}
@@ -74,6 +75,24 @@
   .review-existing{background:var(--paper-alt);border-radius:12px;padding:16px;}
   .review-stars{color:var(--marigold-deep);font-size:1rem;margin-bottom:6px;}
 
+  .chat-box{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;margin-bottom:12px;padding-right:4px;}
+  .chat-msg{max-width:80%;padding:9px 13px;border-radius:14px;font-size:0.86rem;line-height:1.4;}
+  .chat-msg.own{background:var(--ink);color:var(--paper);align-self:flex-end;border-bottom-right-radius:3px;}
+  .chat-msg.other{background:var(--paper-alt);align-self:flex-start;border-bottom-left-radius:3px;}
+  .chat-time{font-size:0.66rem;opacity:0.6;margin-top:3px;}
+  .chat-input-row{display:flex;gap:8px;}
+  .chat-input-row input{
+    flex:1;border:1px solid var(--line);border-radius:999px;padding:10px 14px;
+    font-family:inherit;font-size:0.86rem;background:var(--paper);color:var(--ink);
+  }
+  .chat-send-btn{
+    background:var(--marigold);border:none;color:var(--ink);border-radius:999px;
+    padding:0 18px;font-weight:700;font-size:0.86rem;cursor:pointer;
+  }
+  .chat-empty{text-align:center;color:var(--muted);font-size:0.82rem;padding:16px 0;}
+
+  .link-danger{color:var(--error);font-size:0.82rem;text-decoration:underline;cursor:pointer;display:inline-block;margin-top:10px;}
+
   .loading{text-align:center;color:var(--muted);padding:60px 0;}
 </style>
 </head>
@@ -96,7 +115,8 @@
     berlangsung: 'Sesi Berlangsung',
     selesai: 'Selesai',
     ditolak_tutor: 'Ditolak Tutor',
-    dibatalkan_client: 'Dibatalkan'
+    dibatalkan_client: 'Dibatalkan',
+    disengketakan: 'Dalam Peninjauan Admin'
   };
 
   const params = new URLSearchParams(window.location.search);
@@ -179,10 +199,27 @@
         </div>
       ` : ''}
 
+      ${['diterima','berlangsung','selesai'].includes(booking.status) ? `
+        <div class="card">
+          <h2>Chat</h2>
+          <div class="chat-box" id="chatBox"><div class="chat-empty">Memuat chat...</div></div>
+          <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="Tulis pesan...">
+            <button class="chat-send-btn" id="chatSendBtn">Kirim</button>
+          </div>
+          ${!['selesai'].includes(booking.status) ? `<span class="link-danger" id="disputeBtn">⚠️ Laporkan Masalah</span>` : ''}
+        </div>
+      ` : ''}
+
       <div id="actionArea"></div>
     `;
 
     renderActions();
+    if(['diterima','berlangsung','selesai'].includes(booking.status)){
+      initChat();
+      const disputeBtn = document.getElementById('disputeBtn');
+      if(disputeBtn) disputeBtn.addEventListener('click', handleDispute);
+    }
   }
 
   function renderActions(){
@@ -198,9 +235,11 @@
           </p>
           <div class="msg show info">⚠️ Payment gateway (Midtrans/Xendit) belum terhubung — ini masih simulasi manual untuk testing alur. Jangan gunakan uang asli dulu.</div>
           <button class="btn" id="payBtn">Bayar ${formatRupiah(booking.harga_disepakati)} (Simulasi)</button>
+          <button class="btn btn-outline" id="cancelBtn">Batalkan</button>
         </div>
       `;
       document.getElementById('payBtn').addEventListener('click', simulatePayment);
+      document.getElementById('cancelBtn').addEventListener('click', () => handleCancel(100));
       return;
     }
 
@@ -222,8 +261,27 @@
       return;
     }
 
+    // ---- CLIENT: sudah bayar, menunggu respon tutor -> masih bisa batal, full refund ----
+    if(!isTutor && (booking.status === 'dibayar' || booking.status === 'menunggu_respon_tutor')){
+      area.innerHTML = `
+        <div class="card">
+          <h2>Menunggu Tutor</h2>
+          <p style="font-size:0.86rem;color:var(--muted);margin-bottom:10px;">
+            Tutor belum merespon. Kamu masih bisa membatalkan dengan refund penuh.
+          </p>
+          <button class="btn btn-outline" id="cancelBtn">Batalkan (Refund 100%)</button>
+          <div class="msg" id="cancelMsg"></div>
+        </div>
+      `;
+      document.getElementById('cancelBtn').addEventListener('click', () => handleCancel(100));
+      return;
+    }
+
     // ---- Diterima: tampilkan PIN & tombol konfirmasi selesai ----
     if(booking.status === 'diterima' || booking.status === 'berlangsung'){
+      const jamSisa = getJamSisaKeSesi();
+      const refundInfo = jamSisa >= 24 ? '100% (masih >24 jam)' : jamSisa >= 2 ? '50% (2–24 jam sebelum jadwal)' : '0% (kurang dari 2 jam)';
+
       area.innerHTML = `
         <div class="card">
           <h2>${!isTutor ? 'PIN Konfirmasi Sesi' : 'Selesaikan Sesi'}</h2>
@@ -244,10 +302,48 @@
             <div class="msg" id="pinMsg"></div>
           `}
         </div>
+        ${!isTutor ? `
+          <div class="card">
+            <h2>Batalkan Booking</h2>
+            <p style="font-size:0.82rem;color:var(--muted);margin-bottom:10px;">
+              Estimasi refund saat ini: <strong>${refundInfo}</strong> sesuai kebijakan pembatalan.
+            </p>
+            <button class="btn btn-danger" id="cancelBtn">Batalkan Booking</button>
+            <div class="msg" id="cancelMsg"></div>
+          </div>
+        ` : ''}
       `;
       if(isTutor){
         document.getElementById('confirmPinBtn').addEventListener('click', confirmPin);
+      }else{
+        document.getElementById('cancelBtn').addEventListener('click', () => handleCancel(null));
       }
+      return;
+    }
+
+    // ---- Disengketakan ----
+    if(booking.status === 'disengketakan'){
+      area.innerHTML = `
+        <div class="card">
+          <h2>Sedang Ditinjau Admin</h2>
+          <p style="font-size:0.86rem;color:var(--muted);">
+            Laporan kamu sedang ditinjau oleh admin Ajarin. Dana tetap aman ditahan sampai keputusan diambil. Kamu bisa lanjut chat di atas untuk kasih info tambahan.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    // ---- Ditolak / Dibatalkan ----
+    if(booking.status === 'ditolak_tutor' || booking.status === 'dibatalkan_client'){
+      area.innerHTML = `
+        <div class="card">
+          <h2>${booking.status === 'ditolak_tutor' ? 'Booking Ditolak Tutor' : 'Booking Dibatalkan'}</h2>
+          <p style="font-size:0.86rem;color:var(--muted);">
+            ${!isTutor ? 'Cek saldo kamu di halaman Profil — dana yang bisa dikembalikan sudah otomatis masuk ke sana.' : 'Slot jadwal ini sudah kosong lagi dan bisa dibooking ulang.'}
+          </p>
+        </div>
+      `;
       return;
     }
 
@@ -319,6 +415,104 @@
 
     myReview = { rating: selectedRating, komentar: document.getElementById('komentar').value.trim(), status: selectedRating >= 3 ? 'disetujui' : 'menunggu_moderasi' };
     renderActions();
+  }
+
+  function getJamSisaKeSesi(){
+    const slot = booking.availability_slots;
+    if(!slot) return 999;
+    const jamSesi = new Date(slot.tanggal + 'T' + slot.jam_mulai);
+    return (jamSesi - new Date()) / (1000 * 60 * 60);
+  }
+
+  async function handleCancel(){
+    if(!confirm('Yakin mau batalkan booking ini? Refund akan diproses sesuai kebijakan pembatalan.')) return;
+
+    const btn = document.getElementById('cancelBtn');
+    const msgEl = document.getElementById('cancelMsg');
+    btn.disabled = true; btn.textContent = 'Memproses...';
+
+    const { error } = await supabaseClient
+      .from('bookings')
+      .update({ status: 'dibatalkan_client' })
+      .eq('id', booking.id);
+
+    if(error){
+      msgEl.textContent = 'Gagal membatalkan: ' + error.message;
+      msgEl.className = 'msg show error';
+      btn.disabled = false; btn.textContent = 'Batalkan Booking';
+      return;
+    }
+
+    booking.status = 'dibatalkan_client';
+    render();
+  }
+
+  async function initChat(){
+    const { data: messages } = await supabaseClient
+      .from('chat_messages')
+      .select('*')
+      .eq('booking_id', booking.id)
+      .order('created_at', { ascending: true });
+
+    renderChat(messages || []);
+
+    document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
+    document.getElementById('chatInput').addEventListener('keypress', (e) => {
+      if(e.key === 'Enter') sendChatMessage();
+    });
+
+    // Realtime: pesan baru langsung muncul tanpa refresh
+    supabaseClient
+      .channel('chat-' + booking.id)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'booking_id=eq.' + booking.id }, (payload) => {
+        appendChatMessage(payload.new);
+      })
+      .subscribe();
+  }
+
+  function renderChat(messages){
+    const chatBox = document.getElementById('chatBox');
+    if(messages.length === 0){
+      chatBox.innerHTML = '<div class="chat-empty">Belum ada pesan. Mulai chat untuk koordinasi sesi.</div>';
+      return;
+    }
+    chatBox.innerHTML = messages.map(m => chatBubbleHtml(m)).join('');
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function chatBubbleHtml(m){
+    const isOwn = m.sender_id === currentUser.id;
+    const time = new Date(m.created_at).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    return `<div class="chat-msg ${isOwn ? 'own' : 'other'}">${m.pesan}<div class="chat-time">${time}</div></div>`;
+  }
+
+  function appendChatMessage(m){
+    const chatBox = document.getElementById('chatBox');
+    if(!chatBox) return;
+    if(chatBox.querySelector('.chat-empty')) chatBox.innerHTML = '';
+    chatBox.insertAdjacentHTML('beforeend', chatBubbleHtml(m));
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  async function sendChatMessage(){
+    const input = document.getElementById('chatInput');
+    const pesan = input.value.trim();
+    if(!pesan) return;
+    input.value = '';
+
+    await supabaseClient.from('chat_messages').insert({
+      booking_id: booking.id,
+      sender_id: currentUser.id,
+      pesan
+    });
+  }
+
+  async function handleDispute(){
+    if(!confirm('Laporkan masalah pada booking ini? Admin akan meninjau dan menghubungi kamu.')) return;
+
+    await supabaseClient.from('bookings').update({ status: 'disengketakan' }).eq('id', booking.id);
+    booking.status = 'disengketakan';
+    render();
   }
 
   async function simulatePayment(){

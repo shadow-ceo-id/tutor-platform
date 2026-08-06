@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:800px;margin:0 auto;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
+  .logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.3rem;}
+  .logo span{color:var(--marigold-deep);}
+  .admin-tag{font-size:0.7rem;background:var(--ink);color:var(--paper);padding:3px 10px;border-radius:999px;font-weight:700;margin-left:8px;vertical-align:middle;}
+
+  .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:28px;}
+  @media(min-width:600px){.stats-grid{grid-template-columns:repeat(4,1fr);}}
+  .stat{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;}
+  .stat .num{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.5rem;color:var(--teal);}
+  .stat .label{font-size:0.74rem;color:var(--muted);margin-top:2px;}
+
+  section{margin-bottom:32px;}
+  h2{font-size:1.05rem;margin-bottom:14px;}
+
+  .item-card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:10px;}
+  .item-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+  .item-title{font-weight:700;font-size:0.9rem;}
+  .item-sub{font-size:0.78rem;color:var(--muted);}
+  .stars{color:var(--marigold-deep);font-size:0.9rem;}
+  .komentar{font-size:0.86rem;color:var(--ink-soft);margin:8px 0;}
+
+  .btn-row{display:flex;gap:8px;margin-top:10px;}
+  .btn-sm{
+    padding:8px 16px;border-radius:999px;font-weight:700;font-size:0.8rem;cursor:pointer;border:none;
+  }
+  .btn-approve{background:var(--teal);color:#fff;}
+  .btn-reject{background:transparent;border:1.5px solid var(--error);color:var(--error);}
+  .btn-release{background:var(--marigold);color:var(--ink);}
+  .btn-refund{background:transparent;border:1.5px solid var(--error);color:var(--error);}
+
+  .empty{text-align:center;color:var(--muted);padding:24px;font-size:0.86rem;background:var(--white);border-radius:14px;border:1px solid var(--line);}
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+  .denied{text-align:center;color:var(--muted);padding:100px 20px;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="loading">Memuat...</div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  async function init(){
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(!session){ window.location.href = 'auth.html'; return; }
+
+    const { data: me } = await supabaseClient.from('users').select('roles').eq('id', session.user.id).single();
+    if(!me?.roles?.includes('admin')){
+      document.getElementById('app').innerHTML = '<div class="denied">🔒 Halaman ini khusus admin.</div>';
+      return;
+    }
+
+    await loadAll();
+  }
+
+  async function loadAll(){
+    const [{ count: totalUsers }, { count: totalTutors }, { count: totalBookings }, { data: selesaiBookings }, { data: pendingReviews }, { data: disputes }] = await Promise.all([
+      supabaseClient.from('users').select('id', { count: 'exact', head: true }),
+      supabaseClient.from('tutor_profiles').select('id', { count: 'exact', head: true }),
+      supabaseClient.from('bookings').select('id', { count: 'exact', head: true }),
+      supabaseClient.from('bookings').select('harga_disepakati').eq('status', 'selesai'),
+      supabaseClient.from('reviews').select('*, booking:booking_id(kategori), dari:dari_user_id(nama), ke:ke_user_id(nama)').eq('status', 'menunggu_moderasi').order('created_at', { ascending: false }),
+      supabaseClient.from('bookings').select('*, availability_slots(*), tutor:tutor_id(nama), client:client_id(nama)').eq('status', 'disengketakan').order('created_at', { ascending: false })
+    ]);
+
+    const totalRevenue = (selesaiBookings || []).reduce((sum, b) => sum + Math.round(b.harga_disepakati * 0.15), 0);
+
+    render({
+      totalUsers: totalUsers || 0,
+      totalTutors: totalTutors || 0,
+      totalBookings: totalBookings || 0,
+      totalRevenue,
+      pendingReviews: pendingReviews || [],
+      disputes: disputes || []
+    });
+  }
+
+  function formatRupiah(n){ return 'Rp' + Number(n).toLocaleString('id-ID'); }
+
+  function render(data){
+    document.getElementById('app').innerHTML = `
+      <div class="topbar">
+        <div class="logo">Ajarin<span>.</span><span class="admin-tag">ADMIN</span></div>
+        <a href="dashboard.html" style="font-size:0.84rem;color:var(--muted);text-decoration:none;">Dashboard →</a>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat"><div class="num">${data.totalUsers}</div><div class="label">Total User</div></div>
+        <div class="stat"><div class="num">${data.totalTutors}</div><div class="label">Tutor</div></div>
+        <div class="stat"><div class="num">${data.totalBookings}</div><div class="label">Booking</div></div>
+        <div class="stat"><div class="num">${formatRupiah(data.totalRevenue)}</div><div class="label">Revenue Fee</div></div>
+      </div>
+
+      <section>
+        <h2>⚠️ Dispute Perlu Ditinjau (${data.disputes.length})</h2>
+        <div id="disputeList">
+          ${data.disputes.length === 0 ? '<div class="empty">Tidak ada dispute aktif.</div>' : data.disputes.map(b => `
+            <div class="item-card">
+              <div class="item-top">
+                <div>
+                  <div class="item-title">${b.client?.nama} ↔ ${b.tutor?.nama}</div>
+                  <div class="item-sub">${b.kategori || '-'} · ${formatRupiah(b.harga_disepakati)}</div>
+                </div>
+              </div>
+              <div class="btn-row">
+                <button class="btn-sm btn-release" onclick="resolveDispute('${b.id}','lepas_ke_tutor')">Lepas ke Tutor</button>
+                <button class="btn-sm btn-refund" onclick="resolveDispute('${b.id}','refund_client')">Refund Client</button>
+                <a href="booking-detail.html?id=${b.id}" style="font-size:0.78rem;color:var(--muted);align-self:center;margin-left:auto;">Lihat detail →</a>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+
+      <section>
+        <h2>⭐ Review Menunggu Moderasi (${data.pendingReviews.length})</h2>
+        <div id="reviewList">
+          ${data.pendingReviews.length === 0 ? '<div class="empty">Tidak ada review yang perlu ditinjau.</div>' : data.pendingReviews.map(r => `
+            <div class="item-card">
+              <div class="item-top">
+                <div>
+                  <div class="item-title">${r.dari?.nama} → ${r.ke?.nama}</div>
+                  <div class="item-sub">${r.booking?.kategori || '-'}</div>
+                </div>
+                <div class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+              </div>
+              <div class="komentar">${r.komentar || '(tanpa komentar)'}</div>
+              <div class="btn-row">
+                <button class="btn-sm btn-approve" onclick="moderateReview('${r.id}', true)">Setujui</button>
+                <button class="btn-sm btn-reject" onclick="moderateReview('${r.id}', false)">Tolak</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  async function moderateReview(reviewId, approve){
+    const { error } = await supabaseClient.rpc('admin_moderate_review', { p_review_id: reviewId, p_approve: approve });
+    if(error){ alert('Gagal: ' + error.message); return; }
+    loadAll();
+  }
+
+  async function resolveDispute(bookingId, resolution){
+    const label = resolution === 'lepas_ke_tutor' ? 'melepas dana ke tutor' : 'me-refund penuh ke client';
+    if(!confirm(`Yakin mau ${label}?`)) return;
+
+    const { error } = await supabaseClient.rpc('admin_resolve_dispute', { p_booking_id: bookingId, p_resolution: resolution });
+    if(error){ alert('Gagal: ' + error.message); return; }
+    loadAll();
+  }
+
+  init();
+</script>
+
+</body>
+</html>
