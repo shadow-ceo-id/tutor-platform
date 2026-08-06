@@ -62,7 +62,7 @@
   </div>
 
   <h1>Cari Tutor</h1>
-  <div class="subtitle">Semua tutor sudah terverifikasi, harga fix tanpa nego</div>
+  <div class="subtitle" id="subtitleText">Semua tutor sudah terverifikasi, harga fix tanpa nego</div>
 
   <div class="filters" id="filters"></div>
   <div class="tutor-grid" id="tutorGrid">
@@ -80,6 +80,7 @@
 
   let allTutors = [];
   let activeFilter = 'Semua';
+  let searchQuery = new URLSearchParams(window.location.search).get('q') || '';
 
   function formatRupiah(n){
     return 'Rp' + Number(n).toLocaleString('id-ID');
@@ -100,14 +101,23 @@
   }
 
   function renderTutors(){
-    const filtered = activeFilter === 'Semua'
+    let filtered = activeFilter === 'Semua'
       ? allTutors
       : allTutors.filter(t => t.kategori && t.kategori.includes(activeFilter));
+
+    if(searchQuery){
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(t =>
+        (t.users?.nama || '').toLowerCase().includes(q) ||
+        (t.kategori || []).some(k => k.toLowerCase().includes(q)) ||
+        (t.bio || '').toLowerCase().includes(q)
+      );
+    }
 
     const grid = document.getElementById('tutorGrid');
 
     if(filtered.length === 0){
-      grid.innerHTML = '<div class="empty">Belum ada tutor untuk kategori ini.</div>';
+      grid.innerHTML = `<div class="empty">${searchQuery ? `Tidak ada tutor untuk "${searchQuery}".` : 'Belum ada tutor untuk kategori ini.'}</div>`;
       return;
     }
 
@@ -132,6 +142,11 @@
   }
 
   async function init(){
+    if(searchQuery){
+      document.getElementById('subtitleText').innerHTML =
+        `Hasil pencarian untuk "<strong>${searchQuery}</strong>" — <a href="cari-tutor.html" style="color:var(--teal);">lihat semua tutor</a>`;
+    }
+
     const { data, error } = await supabaseClient
       .from('tutor_profiles')
       .select('*, users(nama, kota)')

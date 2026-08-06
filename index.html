@@ -289,44 +289,44 @@
 <main id="top">
  
   <!-- HERO -->
-  <section class="hero" style="padding-top:56px;">
-    <div class="wrap hero-grid">
-      <div>
-        <span class="eyebrow mono">Kudus Kota &amp; sekitarnya</span>
-        <h1>Butuh yang jago?<br><span class="accent">Ajarin aja.</span></h1>
-        <p class="lead">Temukan tutor terverifikasi untuk akademik, musik, olahraga, sampai skill lainnya — datang langsung ke tempatmu, dengan garansi ganti kalau kurang cocok.</p>
-        <div class="hero-actions">
-          <a href="cari-tutor.html" class="btn btn-accent">Saya Cari Tutor</a>
-          <a href="auth.html" class="btn btn-ghost">Saya Mau Jadi Tutor</a>
-        </div>
-        <p class="hero-note">Trial pertama mulai Rp49.000 · Bisa privat atau kelompok kecil</p>
-      </div>
- 
-      <div class="ticket">
-        <div class="ticket-top">
-          <span class="ticket-badge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-            Tutor Terverifikasi
-          </span>
-          <span class="ticket-id mono">#AJR-2214</span>
-        </div>
-        <div class="ticket-subject">Matematika SD</div>
-        <div class="ticket-tutor">bersama Kak Nadia · Rating 4.9</div>
-        <div class="ticket-divider"></div>
-        <div class="ticket-meta">
-          <div><span class="mono">Jadwal</span><strong>Selasa, 16.00</strong></div>
-          <div><span class="mono">Lokasi</span><strong>Demangan, Kudus</strong></div>
-          <div><span class="mono">Durasi</span><strong>60 menit</strong></div>
-          <div><span class="mono">Mode</span><strong>Datang ke rumah</strong></div>
-        </div>
-        <div class="ticket-foot">
-          <span class="stars">★★★★★</span>
-          <span class="ticket-price">Rp75.000</span>
-        </div>
-      </div>
+  <section class="hero" style="padding-top:48px;padding-bottom:32px;">
+    <div class="wrap" style="max-width:720px;text-align:center;">
+      <span class="eyebrow mono" style="justify-content:center;">Kudus Kota &amp; sekitarnya</span>
+      <h1 style="font-size:clamp(2rem,4.4vw,2.8rem);">Butuh yang jago?<br><span class="accent">Ajarin aja.</span></h1>
+
+      <form id="heroSearchForm" style="display:flex;gap:10px;max-width:520px;margin:28px auto 0;flex-wrap:wrap;">
+        <input
+          type="text"
+          id="heroSearchInput"
+          placeholder="Cari mapel, skill, atau nama tutor..."
+          style="flex:1;min-width:220px;padding:14px 18px;border-radius:999px;border:1.5px solid var(--line);font-family:inherit;font-size:0.96rem;background:var(--white);"
+        >
+        <button type="submit" class="btn btn-accent" style="padding:14px 26px;">Cari Tutor</button>
+      </form>
+
+      <p style="margin-top:16px;font-size:0.9rem;color:var(--muted);">
+        Punya skill dan mau mengajar? <a href="auth.html" style="color:var(--teal);font-weight:600;">Daftar jadi tutor →</a>
+      </p>
     </div>
   </section>
  
+  <!-- TUTOR PILIHAN -->
+  <section id="tutor-pilihan" style="padding-top:0;">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="mono">Sudah Bergabung</span>
+        <h2>Tutor yang siap membantu kamu</h2>
+        <p>Sebagian tutor terverifikasi yang sudah aktif di Ajarin. Lihat semua & mulai booking langsung.</p>
+      </div>
+      <div id="tutorPreviewGrid" style="display:grid;gap:14px;">
+        <div style="text-align:center;color:var(--muted);padding:20px 0;">Memuat tutor...</div>
+      </div>
+      <div style="text-align:center;margin-top:24px;">
+        <a href="cari-tutor.html" class="btn btn-ghost">Lihat Semua Tutor</a>
+      </div>
+    </div>
+  </section>
+
   <!-- TRUST BAR -->
   <div class="trust">
     <div class="trust-inner">
@@ -411,22 +411,7 @@
     </div>
   </section>
  
-  <!-- TUTOR PILIHAN -->
-  <section id="tutor-pilihan" style="padding-top:0;">
-    <div class="wrap">
-      <div class="section-head">
-        <span class="mono">Sudah Bergabung</span>
-        <h2>Tutor yang siap membantu kamu</h2>
-        <p>Sebagian tutor terverifikasi yang sudah aktif di Ajarin. Lihat semua & mulai booking langsung.</p>
-      </div>
-      <div id="tutorPreviewGrid" style="display:grid;gap:14px;">
-        <div style="text-align:center;color:var(--muted);padding:20px 0;">Memuat tutor...</div>
-      </div>
-      <div style="text-align:center;margin-top:24px;">
-        <a href="cari-tutor.html" class="btn btn-ghost">Lihat Semua Tutor</a>
-      </div>
-    </div>
-  </section>
+
 
   <!-- KATEGORI -->
   <section id="kategori" style="padding-top:0;">
@@ -843,6 +828,12 @@
   }
 
   loadTutorPreview();
+
+  document.getElementById('heroSearchForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = document.getElementById('heroSearchInput').value.trim();
+    window.location.href = 'cari-tutor.html' + (q ? '?q=' + encodeURIComponent(q) : '');
+  });
 </script>
  
 </body>
