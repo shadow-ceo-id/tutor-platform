@@ -184,6 +184,9 @@
         </div>
 
         ${slots.length > 0 ? `
+          <label>Alamat Lengkap untuk Sesi *</label>
+          <textarea id="alamat" placeholder="Jl. Contoh No. 12, RT/RW, Kelurahan, patokan terdekat..." required></textarea>
+
           <label>Catatan / Materi yang Dibutuhkan (opsional)</label>
           <textarea id="catatan" placeholder="Misal: butuh bantuan persiapan ujian matematika kelas 6"></textarea>
 
@@ -222,8 +225,16 @@
     }
     if(!selectedSlot) return;
 
-    const btn = document.getElementById('bookBtn');
+    const alamat = document.getElementById('alamat').value.trim();
     const msgEl = document.getElementById('bookingMsg');
+
+    if(!alamat){
+      msgEl.textContent = 'Alamat wajib diisi biar tutor bisa datang ke lokasi yang tepat.';
+      msgEl.className = 'msg show error';
+      return;
+    }
+
+    const btn = document.getElementById('bookBtn');
     btn.disabled = true; btn.textContent = 'Memproses...';
 
     const { data: booking, error } = await supabaseClient
@@ -234,6 +245,7 @@
         client_id: currentUser.id,
         kategori: (tutorProfile.kategori || [])[0] || null,
         catatan_client: document.getElementById('catatan').value.trim(),
+        lokasi: alamat,
         harga_disepakati: tutorProfile.harga_per_jam,
         status: 'menunggu_pembayaran',
         pin_konfirmasi: String(Math.floor(1000 + Math.random() * 9000))

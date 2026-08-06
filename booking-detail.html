@@ -61,6 +61,19 @@
   .msg.success{background:rgba(31,138,118,0.1);color:var(--teal);}
   .msg.info{background:rgba(217,138,34,0.1);color:var(--marigold-deep);}
 
+  .contact-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;}
+  .contact-row a{color:var(--teal);font-weight:700;text-decoration:none;}
+
+  .star-picker{display:flex;gap:8px;margin-bottom:14px;}
+  .star{font-size:1.8rem;cursor:pointer;color:var(--line);transition:color .1s ease;}
+  .star.active{color:var(--marigold);}
+  textarea{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;
+    font-size:0.9rem;background:var(--paper);color:var(--ink);width:100%;min-height:70px;resize:vertical;
+  }
+  .review-existing{background:var(--paper-alt);border-radius:12px;padding:16px;}
+  .review-stars{color:var(--marigold-deep);font-size:1rem;margin-bottom:6px;}
+
   .loading{text-align:center;color:var(--muted);padding:60px 0;}
 </style>
 </head>
@@ -91,6 +104,8 @@
   let currentUser = null;
   let booking = null;
   let isTutor = false;
+  let myReview = null;
+  let selectedRating = 0;
 
   function formatRupiah(n){ return 'Rp' + Number(n).toLocaleString('id-ID'); }
   function formatTanggalJam(slot){
@@ -106,7 +121,7 @@
 
     const { data, error } = await supabaseClient
       .from('bookings')
-      .select('*, availability_slots(*), tutor:tutor_id(nama), client:client_id(nama)')
+      .select('*, availability_slots(*), tutor:tutor_id(nama, no_hp), client:client_id(nama, no_hp)')
       .eq('id', bookingId)
       .single();
 
@@ -117,11 +132,24 @@
 
     booking = data;
     isTutor = currentUser.id === booking.tutor_id;
+
+    if(booking.status === 'selesai'){
+      const { data: existingReview } = await supabaseClient
+        .from('reviews')
+        .select('*')
+        .eq('booking_id', booking.id)
+        .eq('dari_user_id', currentUser.id)
+        .maybeSingle();
+      myReview = existingReview || null;
+    }
+
     render();
   }
 
   function render(){
     const slot = booking.availability_slots;
+    const kontakTerbuka = !['menunggu_pembayaran', 'ditolak_tutor', 'dibatalkan_client'].includes(booking.status);
+    const lawan = isTutor ? booking.client : booking.tutor;
 
     document.getElementById('app').innerHTML = `
       <a href="dashboard.html" class="back-link">← Kembali ke Dashboard</a>
@@ -134,8 +162,22 @@
         <div class="row"><span class="label">Kategori</span><span class="value">${booking.kategori || '-'}</span></div>
         <div class="row"><span class="label">Jadwal</span><span class="value">${formatTanggalJam(slot)}</span></div>
         <div class="row"><span class="label">Harga</span><span class="value">${formatRupiah(booking.harga_disepakati)}</span></div>
+        ${booking.lokasi ? `<div class="row"><span class="label">Alamat</span><span class="value">${booking.lokasi}</span></div>` : ''}
         ${booking.catatan_client ? `<div class="row"><span class="label">Catatan</span><span class="value">${booking.catatan_client}</span></div>` : ''}
       </div>
+
+      ${kontakTerbuka ? `
+        <div class="card">
+          <h2>Kontak ${isTutor ? 'Murid' : 'Tutor'}</h2>
+          <p style="font-size:0.82rem;color:var(--muted);margin-bottom:6px;">
+            Pembayaran sudah aman di Ajarin. Nomor ini untuk koordinasi teknis sesi ini saja (alamat, jam datang, dll) — booking berikutnya tetap wajib lewat Ajarin.
+          </p>
+          <div class="contact-row">
+            <span>${lawan?.nama || '-'}</span>
+            <a href="https://wa.me/62${(lawan?.no_hp || '').replace(/^0/, '')}" target="_blank">${lawan?.no_hp || '-'} →</a>
+          </div>
+        </div>
+      ` : ''}
 
       <div id="actionArea"></div>
     `;
@@ -211,13 +253,72 @@
 
     // ---- Selesai ----
     if(booking.status === 'selesai'){
-      area.innerHTML = `
-        <div class="card">
-          <h2>Sesi Selesai ✅</h2>
-          <p style="font-size:0.86rem;color:var(--muted);">Terima kasih! Jangan lupa kasih review ya.</p>
-        </div>
-      `;
+      if(myReview){
+        area.innerHTML = `
+          <div class="card">
+            <h2>Review Kamu</h2>
+            <div class="review-existing">
+              <div class="review-stars">${'★'.repeat(myReview.rating)}${'☆'.repeat(5 - myReview.rating)}</div>
+              <div style="font-size:0.88rem;color:var(--ink-soft);">${myReview.komentar || '(tanpa komentar)'}</div>
+              ${myReview.status === 'menunggu_moderasi' ? '<div style="font-size:0.76rem;color:var(--muted);margin-top:8px;">Sedang ditinjau admin</div>' : ''}
+            </div>
+          </div>
+        `;
+      }else{
+        area.innerHTML = `
+          <div class="card">
+            <h2>Beri Review ${isTutor ? 'untuk Murid' : 'untuk Tutor'}</h2>
+            <div class="star-picker" id="starPicker">
+              ${[1,2,3,4,5].map(n => `<span class="star" data-n="${n}">★</span>`).join('')}
+            </div>
+            <textarea id="komentar" placeholder="Ceritain pengalaman sesi kamu..."></textarea>
+            <div class="msg" id="reviewMsg"></div>
+            <button class="btn" id="submitReviewBtn" disabled>Pilih Rating Dulu</button>
+          </div>
+        `;
+
+        document.querySelectorAll('.star').forEach(star => {
+          star.addEventListener('click', () => {
+            selectedRating = parseInt(star.dataset.n);
+            document.querySelectorAll('.star').forEach(s => {
+              s.classList.toggle('active', parseInt(s.dataset.n) <= selectedRating);
+            });
+            const btn = document.getElementById('submitReviewBtn');
+            btn.disabled = false;
+            btn.textContent = 'Kirim Review';
+          });
+        });
+
+        document.getElementById('submitReviewBtn').addEventListener('click', submitReview);
+      }
     }
+  }
+
+  async function submitReview(){
+    if(selectedRating === 0) return;
+    const btn = document.getElementById('submitReviewBtn');
+    const msgEl = document.getElementById('reviewMsg');
+    btn.disabled = true; btn.textContent = 'Mengirim...';
+
+    const keUserId = isTutor ? booking.client_id : booking.tutor_id;
+
+    const { error } = await supabaseClient.from('reviews').insert({
+      booking_id: booking.id,
+      dari_user_id: currentUser.id,
+      ke_user_id: keUserId,
+      rating: selectedRating,
+      komentar: document.getElementById('komentar').value.trim()
+    });
+
+    if(error){
+      msgEl.textContent = 'Gagal kirim review: ' + error.message;
+      msgEl.className = 'msg show error';
+      btn.disabled = false; btn.textContent = 'Kirim Review';
+      return;
+    }
+
+    myReview = { rating: selectedRating, komentar: document.getElementById('komentar').value.trim(), status: selectedRating >= 3 ? 'disetujui' : 'menunggu_moderasi' };
+    renderActions();
   }
 
   async function simulatePayment(){
