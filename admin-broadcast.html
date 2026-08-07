@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Broadcast Promo — Ajarin Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:520px;margin:0 auto;}
+  .back-link{font-size:0.86rem;color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:16px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;margin-bottom:6px;}
+  .subtitle{color:var(--muted);font-size:0.9rem;margin-bottom:20px;}
+
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px;}
+  label{display:block;font-size:0.84rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px;margin-top:14px;}
+  label:first-of-type{margin-top:0;}
+  input, textarea, select{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;
+    font-size:0.9rem;background:var(--paper);color:var(--ink);width:100%;
+  }
+  textarea{min-height:80px;resize:vertical;}
+
+  .btn{margin-top:18px;background:var(--marigold);color:var(--ink);border:none;padding:13px;border-radius:999px;font-weight:700;font-size:0.94rem;cursor:pointer;width:100%;}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .msg{font-size:0.86rem;padding:10px 12px;border-radius:8px;margin-top:12px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:rgba(192,57,43,0.1);color:var(--error);}
+  .msg.success{background:rgba(31,138,118,0.1);color:var(--teal);}
+  .msg.info{background:rgba(217,138,34,0.1);color:var(--marigold-deep);}
+
+  .history-item{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:8px;}
+  .history-top{display:flex;justify-content:space-between;font-size:0.84rem;font-weight:700;}
+  .history-meta{font-size:0.76rem;color:var(--muted);margin-top:4px;}
+  .status-badge{font-size:0.68rem;font-weight:700;padding:3px 8px;border-radius:999px;}
+  .status-menunggu{background:rgba(217,138,34,0.15);color:var(--marigold-deep);}
+  .status-terkirim{background:rgba(31,138,118,0.15);color:var(--teal);}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <a href="admin.html" class="back-link">← Panel Admin</a>
+  <h1>Broadcast Promo</h1>
+  <div class="subtitle">Kirim notifikasi promo ke user yang sudah izinkan push notification</div>
+
+  <div class="card">
+    <form id="broadcastForm">
+      <label>Judul Notifikasi</label>
+      <input type="text" id="judul" required placeholder="Misal: Promo Spesial Weekend!">
+
+      <label>Isi Pesan</label>
+      <textarea id="isi" required placeholder="Diskon 20% buat booking tutor Matematika minggu ini!"></textarea>
+
+      <label>Target Penerima</label>
+      <select id="targetRole">
+        <option value="semua">Semua User</option>
+        <option value="client">Khusus Pencari Tutor</option>
+        <option value="tutor">Khusus Tutor</option>
+      </select>
+
+      <div class="msg show info">⚠️ Broadcast diproses lewat cron job, jadi bisa butuh beberapa menit sampai benar-benar terkirim ke semua penerima.</div>
+      <div class="msg" id="broadcastMsg"></div>
+      <button type="submit" class="btn" id="sendBtn">Antri Kirim Broadcast</button>
+    </form>
+  </div>
+
+  <h2 style="font-size:1rem;margin-bottom:12px;">Riwayat Broadcast</h2>
+  <div id="historyList"><div style="color:var(--muted);font-size:0.86rem;">Memuat...</div></div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let currentUser = null;
+
+  async function init(){
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(!session){ window.location.href = 'auth.html'; return; }
+    currentUser = session.user;
+    loadHistory();
+  }
+
+  async function loadHistory(){
+    const { data } = await supabaseClient.from('push_broadcasts').select('*').order('created_at', { ascending: false }).limit(20);
+    const el = document.getElementById('historyList');
+    if(!data || data.length === 0){
+      el.innerHTML = '<div style="color:var(--muted);font-size:0.86rem;">Belum ada broadcast.</div>';
+      return;
+    }
+    el.innerHTML = data.map(b => `
+      <div class="history-item">
+        <div class="history-top">
+          <span>${b.judul}</span>
+          <span class="status-badge status-${b.status}">${b.status === 'terkirim' ? `Terkirim (${b.total_terkirim})` : 'Menunggu'}</span>
+        </div>
+        <div class="history-meta">${b.isi}</div>
+        <div class="history-meta">Target: ${b.target_role} · ${new Date(b.created_at).toLocaleString('id-ID')}</div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('broadcastForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('sendBtn');
+    const msgEl = document.getElementById('broadcastMsg');
+    btn.disabled = true; btn.textContent = 'Mengantri...';
+
+    const { error } = await supabaseClient.from('push_broadcasts').insert({
+      judul: document.getElementById('judul').value.trim(),
+      isi: document.getElementById('isi').value.trim(),
+      target_role: document.getElementById('targetRole').value,
+      dibuat_oleh: currentUser.id
+    });
+
+    if(error){
+      msgEl.textContent = 'Gagal: ' + error.message;
+      msgEl.className = 'msg show error';
+      btn.disabled = false; btn.textContent = 'Antri Kirim Broadcast';
+      return;
+    }
+
+    msgEl.textContent = 'Broadcast berhasil diantrikan! Akan terkirim dalam beberapa menit.';
+    msgEl.className = 'msg show success';
+    document.getElementById('broadcastForm').reset();
+    btn.disabled = false; btn.textContent = 'Antri Kirim Broadcast';
+    loadHistory();
+  });
+
+  init();
+</script>
+
+</body>
+</html>
