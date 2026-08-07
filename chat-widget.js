@@ -155,6 +155,7 @@
       if(!chatOpened){
         chatOpened = true;
         addBot('Halo Kak! 👋 Ada yang bisa dibantu seputar Ajarin?');
+        setupPushNotification(supabaseClient, userContext);
       }
     });
     document.getElementById('ajarinChatClose').addEventListener('click', () => overlay.classList.remove('open'));
@@ -192,6 +193,85 @@
         addBot('Maaf, koneksi lagi bermasalah. Coba lagi sebentar ya.');
       }
     });
+  }
+
+  const VAPID_PUBLIC_KEY = 'BHWOx-ZeGpKnnmR9JcCqaTecHMXPdOBBGQefwwZJyQ1t2bV5c_c390quNJHJ6JRSd9KzcbXw6_e3sBMl2v-Q_3c';
+
+  function urlBase64ToUint8Array(base64String){
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  }
+
+  function getAnonId(){
+    let id = localStorage.getItem('ajarin_anon_id');
+    if(!id){
+      id = 'anon_' + Math.random().toString(36).slice(2) + Date.now();
+      localStorage.setItem('ajarin_anon_id', id);
+    }
+    return id;
+  }
+
+  async function setupPushNotification(supabaseClient, userContext){
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if(Notification.permission === 'denied') return;
+    if(localStorage.getItem('ajarin_push_subscribed') === 'true') return; // udah pernah, gak usah ulang
+
+    try{
+      const permission = await Notification.requestPermission();
+      if(permission !== 'granted') return;
+
+      const registration = await navigator.serviceWorker.register('/service-worker.js');
+      await navigator.serviceWorker.ready;
+
+      let subscription = await registration.pushManager.getSubscription();
+      if(!subscription){
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+      }
+
+      const subJson = subscription.toJSON();
+
+      await fetch(SUPABASE_URL + '/rest/v1/push_subscriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Prefer': 'resolution=ignore-duplicates'
+        },
+        body: JSON.stringify({
+          user_id: userContext?.email ? null : null, // diisi via lookup di bawah kalau login
+          anon_id: getAnonId(),
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys.p256dh,
+          auth_key: subJson.keys.auth
+        })
+      });
+
+      // Kalau user login, update row itu biar ke-link ke akunnya (bukan cuma anon_id)
+      if(userContext?.email){
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if(session){
+          await fetch(SUPABASE_URL + '/rest/v1/push_subscriptions?endpoint=eq.' + encodeURIComponent(subJson.endpoint), {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_KEY,
+              'Authorization': 'Bearer ' + SUPABASE_KEY
+            },
+            body: JSON.stringify({ user_id: session.user.id })
+          });
+        }
+      }
+
+      localStorage.setItem('ajarin_push_subscribed', 'true');
+    }catch(err){
+      console.error('Push subscription gagal:', err);
+    }
   }
 
   loadSupabaseSDK(init);
