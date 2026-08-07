@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Posting Kebutuhan Tutor — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:520px;margin:0 auto;}
+  .back-link{font-size:0.86rem;color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:16px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;margin-bottom:6px;}
+  .subtitle{color:var(--muted);font-size:0.9rem;margin-bottom:20px;}
+
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:22px;}
+  label{display:block;font-size:0.84rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px;margin-top:14px;}
+  label:first-of-type{margin-top:0;}
+  input, textarea, select{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;
+    font-size:0.9rem;background:var(--paper);color:var(--ink);width:100%;
+  }
+  textarea{min-height:90px;resize:vertical;}
+  .row-2{display:flex;gap:10px;}
+  .row-2 > div{flex:1;}
+
+  .btn{
+    margin-top:18px;background:var(--marigold);color:var(--ink);border:none;
+    padding:13px;border-radius:999px;font-weight:700;font-size:0.94rem;cursor:pointer;width:100%;
+  }
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .msg{font-size:0.86rem;padding:10px 12px;border-radius:8px;margin-top:12px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:rgba(192,57,43,0.1);color:var(--error);}
+  .msg.success{background:rgba(31,138,118,0.1);color:var(--teal);}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <a href="dashboard.html" class="back-link">← Kembali ke Dashboard</a>
+  <h1>Posting Kebutuhan Tutor</h1>
+  <div class="subtitle">Ceritain apa yang kamu butuhkan, tutor yang cocok bakal kirim penawaran ke kamu</div>
+
+  <div class="card">
+    <form id="postForm">
+      <label>Kategori</label>
+      <select id="kategori" required>
+        <option value="">Pilih kategori</option>
+        <option>Matematika</option>
+        <option>Bahasa Inggris</option>
+        <option>Calistung</option>
+        <option>Mengaji & Pegon</option>
+        <option>Musik</option>
+        <option>Olahraga</option>
+        <option>SD & SMP</option>
+        <option>Skill Lainnya</option>
+      </select>
+
+      <label>Ceritain Kebutuhanmu</label>
+      <textarea id="deskripsi" required placeholder="Misal: Butuh tutor matematika buat anak kelas 5 SD, kesulitan di perkalian & pembagian..."></textarea>
+
+      <label>Area / Lokasi</label>
+      <input type="text" id="area" required placeholder="Misal: Demangan, Kudus">
+
+      <div class="row-2">
+        <div>
+          <label>Budget Min (Rp/jam)</label>
+          <input type="number" id="budgetMin" placeholder="60000">
+        </div>
+        <div>
+          <label>Budget Max (Rp/jam)</label>
+          <input type="number" id="budgetMax" placeholder="80000">
+        </div>
+      </div>
+
+      <label>Jadwal yang Diinginkan (opsional)</label>
+      <input type="text" id="jadwal" placeholder="Misal: Sore hari, weekdays">
+
+      <div class="msg" id="postMsg"></div>
+      <button type="submit" class="btn" id="postBtn">Posting Kebutuhan</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentUser = null;
+
+  (async () => {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(!session){ window.location.href = 'auth.html'; return; }
+    currentUser = session.user;
+  })();
+
+  document.getElementById('postForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('postBtn');
+    const msgEl = document.getElementById('postMsg');
+    btn.disabled = true; btn.textContent = 'Memposting...';
+
+    const budgetMin = parseInt(document.getElementById('budgetMin').value) || null;
+    const budgetMax = parseInt(document.getElementById('budgetMax').value) || null;
+
+    const { error } = await supabaseClient.from('kebutuhan_tutor').insert({
+      client_id: currentUser.id,
+      kategori: document.getElementById('kategori').value,
+      deskripsi: document.getElementById('deskripsi').value.trim(),
+      area: document.getElementById('area').value.trim(),
+      budget_min: budgetMin,
+      budget_max: budgetMax,
+      jadwal_diinginkan: document.getElementById('jadwal').value.trim()
+    });
+
+    if(error){
+      msgEl.textContent = 'Gagal posting: ' + error.message;
+      msgEl.className = 'msg show error';
+      btn.disabled = false; btn.textContent = 'Posting Kebutuhan';
+      return;
+    }
+
+    msgEl.textContent = 'Berhasil diposting! Tutor yang cocok akan kirim penawaran ke kamu.';
+    msgEl.className = 'msg show success';
+    setTimeout(() => { window.location.href = 'kebutuhan-tutor.html'; }, 1500);
+  });
+</script>
+
+</body>
+</html>

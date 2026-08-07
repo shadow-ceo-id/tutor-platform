@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kebutuhan Tutor — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:900px;margin:0 auto;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
+  .logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.3rem;text-decoration:none;color:var(--ink);}
+  .logo span{color:var(--marigold-deep);}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;margin-bottom:6px;}
+  .subtitle{color:var(--muted);font-size:0.92rem;margin-bottom:22px;}
+
+  .need-grid{display:grid;gap:16px;}
+  .need-card{
+    background:var(--white);border:1px solid var(--line);border-radius:16px;
+    padding:20px;text-decoration:none;color:var(--ink);display:block;
+    transition:transform .15s ease;
+  }
+  .need-card:hover{transform:translateY(-2px);}
+  .need-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+  .need-kategori{
+    display:inline-block;background:rgba(31,138,118,0.1);color:var(--teal);
+    padding:4px 12px;border-radius:999px;font-size:0.76rem;font-weight:700;
+  }
+  .need-budget{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.9rem;color:var(--ink);white-space:nowrap;}
+  .need-desc{font-size:0.9rem;color:var(--ink-soft);line-height:1.5;margin-bottom:10px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .need-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:0.78rem;color:var(--muted);}
+
+  .empty{text-align:center;color:var(--muted);padding:60px 0;}
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <a href="index.html" class="logo">Ajarin<span>.</span></a>
+    <a href="dashboard.html" class="logo" style="font-size:0.86rem;color:var(--muted);">Dashboard →</a>
+  </div>
+
+  <h1>Kebutuhan Tutor</h1>
+  <div class="subtitle">Orang-orang yang sedang cari tutor — kirim penawaran kalau kamu cocok</div>
+
+  <div class="need-grid" id="needGrid"><div class="loading">Memuat...</div></div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  function formatRupiah(n){ return 'Rp' + Number(n).toLocaleString('id-ID'); }
+  function timeAgo(dateStr){
+    const diff = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
+    if(diff < 1) return 'Hari ini';
+    if(diff === 1) return 'Kemarin';
+    return diff + ' hari lalu';
+  }
+
+  async function init(){
+    const { data, error } = await supabaseClient
+      .from('kebutuhan_tutor')
+      .select('*, users(nama)')
+      .eq('status', 'aktif')
+      .order('created_at', { ascending: false });
+
+    const grid = document.getElementById('needGrid');
+
+    if(error || !data || data.length === 0){
+      grid.innerHTML = '<div class="empty">Belum ada kebutuhan tutor yang diposting.</div>';
+      return;
+    }
+
+    grid.innerHTML = data.map(k => `
+      <a href="kebutuhan-detail.html?id=${k.id}" class="need-card">
+        <div class="need-top">
+          <span class="need-kategori">${k.kategori}</span>
+          ${k.budget_min ? `<span class="need-budget">${formatRupiah(k.budget_min)} - ${formatRupiah(k.budget_max)}</span>` : ''}
+        </div>
+        <div class="need-desc">${k.deskripsi}</div>
+        <div class="need-meta">
+          <span>📍 ${k.area || 'Kudus'}</span>
+          ${k.jadwal_diinginkan ? `<span>🗓 ${k.jadwal_diinginkan}</span>` : ''}
+          <span>🕐 ${timeAgo(k.created_at)}</span>
+        </div>
+      </a>
+    `).join('');
+  }
+
+  init();
+</script>
+
+</body>
+</html>

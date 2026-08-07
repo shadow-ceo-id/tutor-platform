@@ -170,30 +170,40 @@
         </div>
       `}
 
-      <div class="card">
-        <h2>Pilih Jadwal</h2>
-        <div class="slot-list" id="slotList">
-          ${slots.length === 0 ? '<div class="empty">Tutor belum membuka slot jadwal.</div>' : slots.map(s => `
-            <div class="slot-item" data-id="${s.id}" data-tanggal="${s.tanggal}" data-mulai="${s.jam_mulai}" data-selesai="${s.jam_selesai}">
-              <div class="slot-info">
-                <div class="tanggal">${formatTanggal(s.tanggal)}</div>
-                <div class="jam">${s.jam_mulai.slice(0,5)} – ${s.jam_selesai.slice(0,5)}</div>
-              </div>
-            </div>
-          `).join('')}
+      ${!currentUser ? `
+        <div class="card" style="background:var(--ink);color:var(--paper);text-align:center;">
+          <h2 style="color:rgba(250,248,242,0.7);">Mau Lihat Jadwal & Booking?</h2>
+          <p style="font-size:0.9rem;color:rgba(250,248,242,0.85);margin-bottom:16px;">
+            Daftar gratis buat lihat jadwal kosong ${profile.users?.nama || 'tutor ini'} dan langsung booking sesi belajar.
+          </p>
+          <a href="auth.html" class="btn btn-accent" style="display:block;text-decoration:none;">Daftar / Masuk Sekarang</a>
         </div>
+      ` : `
+        <div class="card">
+          <h2>Pilih Jadwal</h2>
+          <div class="slot-list" id="slotList">
+            ${slots.length === 0 ? '<div class="empty">Tutor belum membuka slot jadwal.</div>' : slots.map(s => `
+              <div class="slot-item" data-id="${s.id}" data-tanggal="${s.tanggal}" data-mulai="${s.jam_mulai}" data-selesai="${s.jam_selesai}">
+                <div class="slot-info">
+                  <div class="tanggal">${formatTanggal(s.tanggal)}</div>
+                  <div class="jam">${s.jam_mulai.slice(0,5)} – ${s.jam_selesai.slice(0,5)}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
 
-        ${slots.length > 0 ? `
-          <label>Alamat Lengkap untuk Sesi *</label>
-          <textarea id="alamat" placeholder="Jl. Contoh No. 12, RT/RW, Kelurahan, patokan terdekat..." required></textarea>
+          ${slots.length > 0 ? `
+            <label>Alamat Lengkap untuk Sesi *</label>
+            <textarea id="alamat" placeholder="Jl. Contoh No. 12, RT/RW, Kelurahan, patokan terdekat..." required></textarea>
 
-          <label>Catatan / Materi yang Dibutuhkan (opsional)</label>
-          <textarea id="catatan" placeholder="Misal: butuh bantuan persiapan ujian matematika kelas 6"></textarea>
+            <label>Catatan / Materi yang Dibutuhkan (opsional)</label>
+            <textarea id="catatan" placeholder="Misal: butuh bantuan persiapan ujian matematika kelas 6"></textarea>
 
-          <div class="msg" id="bookingMsg"></div>
-          <button class="btn" id="bookBtn" disabled>Pilih Jadwal Dulu</button>
-        ` : ''}
-      </div>
+            <div class="msg" id="bookingMsg"></div>
+            <button class="btn" id="bookBtn" disabled>Pilih Jadwal Dulu</button>
+          ` : ''}
+        </div>
+      `}
     `;
 
     document.querySelectorAll('.slot-item').forEach(item => {

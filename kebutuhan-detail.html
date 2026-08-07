@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detail Kebutuhan — Ajarin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:560px;margin:0 auto;}
+  .back-link{font-size:0.86rem;color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:16px;}
+
+  .need-kategori{
+    display:inline-block;background:rgba(31,138,118,0.1);color:var(--teal);
+    padding:5px 14px;border-radius:999px;font-size:0.8rem;font-weight:700;margin-bottom:14px;
+  }
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px;}
+  .card h2{font-size:0.92rem;margin-bottom:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.02em;}
+  .deskripsi{font-size:0.94rem;color:var(--ink-soft);line-height:1.6;margin-bottom:16px;}
+  .row{display:flex;justify-content:space-between;padding:8px 0;font-size:0.9rem;border-bottom:1px solid var(--paper-alt);}
+  .row:last-child{border-bottom:none;}
+  .row .label{color:var(--muted);}
+  .row .value{font-weight:600;text-align:right;}
+
+  label{display:block;font-size:0.84rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px;margin-top:14px;}
+  textarea, input{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;
+    font-size:0.9rem;background:var(--paper);color:var(--ink);width:100%;
+  }
+  textarea{min-height:80px;resize:vertical;}
+
+  .btn{
+    margin-top:16px;background:var(--marigold);color:var(--ink);border:none;
+    padding:13px;border-radius:999px;font-weight:700;font-size:0.94rem;cursor:pointer;width:100%;
+  }
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-ghost{background:transparent;border:1.5px solid var(--ink);color:var(--ink);}
+
+  .msg{font-size:0.86rem;padding:10px 12px;border-radius:8px;margin-top:12px;display:none;}
+  .msg.show{display:block;}
+  .msg.error{background:rgba(192,57,43,0.1);color:var(--error);}
+  .msg.success{background:rgba(31,138,118,0.1);color:var(--teal);}
+  .msg.info{background:rgba(217,138,34,0.1);color:var(--marigold-deep);}
+
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="loading">Memuat...</div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const params = new URLSearchParams(window.location.search);
+  const kebutuhanId = params.get('id');
+  let currentUser = null;
+  let isTutor = false;
+
+  function formatRupiah(n){ return 'Rp' + Number(n).toLocaleString('id-ID'); }
+
+  async function init(){
+    if(!kebutuhanId){
+      document.getElementById('app').innerHTML = '<div class="loading">Kebutuhan tidak ditemukan.</div>';
+      return;
+    }
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    currentUser = session?.user || null;
+
+    if(currentUser){
+      const { data: me } = await supabaseClient.from('users').select('roles').eq('id', currentUser.id).single();
+      isTutor = me?.roles?.includes('tutor') || false;
+    }
+
+    const { data: kebutuhan, error } = await supabaseClient
+      .from('kebutuhan_tutor')
+      .select('*, users(nama)')
+      .eq('id', kebutuhanId)
+      .single();
+
+    if(error || !kebutuhan){
+      document.getElementById('app').innerHTML = '<div class="loading">Kebutuhan tidak ditemukan.</div>';
+      return;
+    }
+
+    let myOffer = null;
+    if(currentUser && isTutor){
+      const { data } = await supabaseClient
+        .from('offers')
+        .select('*')
+        .eq('kebutuhan_id', kebutuhanId)
+        .eq('tutor_id', currentUser.id)
+        .maybeSingle();
+      myOffer = data;
+    }
+
+    render(kebutuhan, myOffer);
+  }
+
+  function render(k, myOffer){
+    document.getElementById('app').innerHTML = `
+      <a href="kebutuhan-tutor.html" class="back-link">← Kembali ke Daftar Kebutuhan</a>
+
+      <span class="need-kategori">${k.kategori}</span>
+
+      <div class="card">
+        <h2>Detail Kebutuhan</h2>
+        <div class="deskripsi">${k.deskripsi}</div>
+        <div class="row"><span class="label">Area</span><span class="value">${k.area || '-'}</span></div>
+        ${k.jadwal_diinginkan ? `<div class="row"><span class="label">Jadwal Diinginkan</span><span class="value">${k.jadwal_diinginkan}</span></div>` : ''}
+        ${k.budget_min ? `<div class="row"><span class="label">Budget</span><span class="value">${formatRupiah(k.budget_min)} - ${formatRupiah(k.budget_max)}/jam</span></div>` : ''}
+      </div>
+
+      <div id="actionArea"></div>
+    `;
+
+    const area = document.getElementById('actionArea');
+
+    // Belum login
+    if(!currentUser){
+      area.innerHTML = `
+        <div class="card">
+          <h2>Kamu Tutor yang Cocok?</h2>
+          <p style="font-size:0.86rem;color:var(--muted);margin-bottom:10px;">
+            Daftar atau masuk dulu buat kirim penawaran ke ${k.users?.nama || 'pencari tutor ini'}.
+          </p>
+          <a href="auth.html" class="btn" style="display:block;text-align:center;text-decoration:none;">Daftar / Masuk</a>
+        </div>
+      `;
+      return;
+    }
+
+    // Login tapi bukan tutor
+    if(!isTutor){
+      area.innerHTML = `
+        <div class="card">
+          <h2>Khusus Tutor</h2>
+          <p style="font-size:0.86rem;color:var(--muted);margin-bottom:10px;">
+            Cuma akun dengan profil tutor yang bisa kirim penawaran. Yuk lengkapi profil tutor kamu dulu.
+          </p>
+          <a href="profil-tutor.html" class="btn" style="display:block;text-align:center;text-decoration:none;">Lengkapi Profil Tutor</a>
+        </div>
+      `;
+      return;
+    }
+
+    // Sudah pernah kirim penawaran
+    if(myOffer){
+      area.innerHTML = `
+        <div class="card">
+          <h2>Penawaran Kamu</h2>
+          <p style="font-size:0.86rem;color:var(--ink-soft);margin-bottom:8px;">${myOffer.pesan || '(tanpa pesan)'}</p>
+          ${myOffer.harga_ditawarkan ? `<p style="font-size:0.9rem;font-weight:700;">Rp${Number(myOffer.harga_ditawarkan).toLocaleString('id-ID')}/jam</p>` : ''}
+          <div class="msg show ${myOffer.status === 'diterima' ? 'success' : 'info'}">
+            Status: ${myOffer.status === 'menunggu' ? 'Menunggu respon' : myOffer.status === 'diterima' ? 'Diterima! Lanjut booking di profil kamu.' : 'Tidak diterima'}
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Tutor, belum kirim penawaran
+    area.innerHTML = `
+      <div class="card">
+        <h2>Kirim Penawaran</h2>
+        <label>Pesan buat ${k.users?.nama || 'calon murid'}</label>
+        <textarea id="pesanOffer" placeholder="Perkenalkan diri kamu & kenapa kamu cocok buat kebutuhan ini..."></textarea>
+        <label>Harga per Jam yang Kamu Tawarkan (Rp)</label>
+        <input type="number" id="hargaOffer" placeholder="75000">
+        <div class="msg" id="offerMsg"></div>
+        <button class="btn" id="sendOfferBtn">Kirim Penawaran</button>
+      </div>
+    `;
+
+    document.getElementById('sendOfferBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('sendOfferBtn');
+      const msgEl = document.getElementById('offerMsg');
+      btn.disabled = true; btn.textContent = 'Mengirim...';
+
+      const { error } = await supabaseClient.from('offers').insert({
+        kebutuhan_id: kebutuhanId,
+        tutor_id: currentUser.id,
+        pesan: document.getElementById('pesanOffer').value.trim(),
+        harga_ditawarkan: parseInt(document.getElementById('hargaOffer').value) || null
+      });
+
+      if(error){
+        msgEl.textContent = 'Gagal kirim: ' + error.message;
+        msgEl.className = 'msg show error';
+        btn.disabled = false; btn.textContent = 'Kirim Penawaran';
+        return;
+      }
+
+      init();
+    });
+  }
+
+  init();
+</script>
+
+</body>
+</html>
