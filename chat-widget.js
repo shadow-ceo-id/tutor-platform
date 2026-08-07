@@ -24,6 +24,16 @@
     injectStyles();
     injectMarkup();
     wireEvents(supabaseClient);
+
+    // Register service worker dari awal, JANGAN nunggu klik chat.
+    // Ini penting buat iOS Safari: kalau register-nya baru dipanggil
+    // pas klik chat, jeda waktu sampai subscribe() bisa bikin iOS
+    // nganggep user-gesture-nya udah "kadaluarsa" dan diam-diam nolak.
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('/service-worker.js').catch(err => {
+        console.error('SW register awal gagal:', err);
+      });
+    }
   }
 
   function injectStyles(){
@@ -155,6 +165,8 @@
       if(!chatOpened){
         chatOpened = true;
         addBot('Halo Kak! 👋 Ada yang bisa dibantu seputar Ajarin?');
+        // Panggil langsung (bukan dibungkus proses lain) biar user-gesture dari klik ini
+        // masih "hidup" sampai ke pushManager.subscribe().
         setupPushNotification(supabaseClient, userContext);
       }
     });
@@ -213,16 +225,34 @@
     return id;
   }
 
+  // DEBUG_MODE: sementara true biar error keliatan lewat alert().
+  // Matikan (set false) lagi setelah masalah subscribe ketemu & fix.
+  const DEBUG_MODE = true;
+
   async function setupPushNotification(supabaseClient, userContext){
-    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    if(Notification.permission === 'denied') return;
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+      if(DEBUG_MODE) alert('Browser ini tidak mendukung Push Notification (serviceWorker/PushManager tidak ada).');
+      return;
+    }
+    if(Notification.permission === 'denied'){
+      if(DEBUG_MODE) alert('Izin notifikasi berstatus "denied". Cek Settings HP untuk situs ini.');
+      return;
+    }
     if(localStorage.getItem('ajarin_push_subscribed') === 'true') return; // udah pernah, gak usah ulang
 
     try{
       const permission = await Notification.requestPermission();
-      if(permission !== 'granted') return;
+      if(permission !== 'granted'){
+        if(DEBUG_MODE) alert('Permission hasil: ' + permission + ' (bukan granted).');
+        return;
+      }
 
-      const registration = await navigator.serviceWorker.register('/service-worker.js');
+      // Pakai registration yang udah didaftarkan dari awal load halaman.
+      // Kalau belum siap (race condition), baru register di sini sebagai fallback.
+      let registration = await navigator.serviceWorker.getRegistration();
+      if(!registration){
+        registration = await navigator.serviceWorker.register('/service-worker.js');
+      }
       await navigator.serviceWorker.ready;
 
       let subscription = await registration.pushManager.getSubscription();
@@ -235,7 +265,7 @@
 
       const subJson = subscription.toJSON();
 
-      await fetch(SUPABASE_URL + '/rest/v1/push_subscriptions', {
+      const insertRes = await fetch(SUPABASE_URL + '/rest/v1/push_subscriptions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,13 +274,18 @@
           'Prefer': 'resolution=ignore-duplicates'
         },
         body: JSON.stringify({
-          user_id: userContext?.email ? null : null, // diisi via lookup di bawah kalau login
+          user_id: null,
           anon_id: getAnonId(),
           endpoint: subJson.endpoint,
           p256dh: subJson.keys.p256dh,
           auth_key: subJson.keys.auth
         })
       });
+
+      if(!insertRes.ok && DEBUG_MODE){
+        const errText = await insertRes.text();
+        alert('Gagal simpan subscription ke database: ' + insertRes.status + ' ' + errText);
+      }
 
       // Kalau user login, update row itu biar ke-link ke akunnya (bukan cuma anon_id)
       if(userContext?.email){
@@ -269,8 +304,10 @@
       }
 
       localStorage.setItem('ajarin_push_subscribed', 'true');
+      if(DEBUG_MODE) alert('Push notification berhasil di-subscribe! ✅');
     }catch(err){
       console.error('Push subscription gagal:', err);
+      if(DEBUG_MODE) alert('Push subscribe error: ' + (err.name || '') + ' - ' + (err.message || err));
     }
   }
 
