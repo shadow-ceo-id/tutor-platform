@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evaluasi Chatbot — Ajarin Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0F2A26; --ink-soft:#2A423D; --paper:#FAF8F2; --paper-alt:#F1ECDE;
+    --marigold:#F2A63D; --marigold-deep:#D98A22; --teal:#1F8A76; --muted:#5B6B66;
+    --line:#E4DFD1; --white:#FFFFFF; --error:#C0392B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;}
+  .wrap{max-width:920px;margin:0 auto;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
+  .logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.3rem;}
+  .logo span{color:var(--marigold-deep);}
+  .back-link{font-size:0.84rem;color:var(--muted);text-decoration:none;}
+
+  .tabs{display:flex;background:var(--paper-alt);border-radius:999px;padding:4px;margin-bottom:20px;max-width:420px;}
+  .tab{flex:1;text-align:center;padding:9px;border-radius:999px;font-weight:600;font-size:0.84rem;cursor:pointer;color:var(--muted);}
+  .tab.active{background:var(--ink);color:var(--paper);}
+
+  .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+  .stat{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;}
+  .stat .num{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.4rem;color:var(--teal);}
+  .stat .label{font-size:0.72rem;color:var(--muted);margin-top:2px;}
+
+  .session-card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:10px;cursor:pointer;}
+  .session-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+  .session-id{font-family:monospace;font-size:0.76rem;color:var(--muted);}
+  .session-time{font-size:0.76rem;color:var(--muted);}
+  .session-preview{font-size:0.88rem;color:var(--ink-soft);
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .session-count{font-size:0.72rem;background:var(--paper-alt);color:var(--muted);padding:2px 8px;border-radius:999px;}
+
+  .lead-card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:10px;}
+  .lead-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+  .lead-name{font-weight:700;font-size:0.92rem;}
+  .lead-detail{font-size:0.84rem;color:var(--ink-soft);margin-bottom:6px;}
+  .followed-badge{font-size:0.7rem;font-weight:700;padding:3px 10px;border-radius:999px;}
+  .followed-yes{background:rgba(31,138,118,0.15);color:var(--teal);}
+  .followed-no{background:rgba(217,138,34,0.15);color:var(--marigold-deep);}
+  .btn-sm{padding:6px 14px;border-radius:999px;font-size:0.76rem;font-weight:700;border:none;cursor:pointer;background:var(--ink);color:var(--paper);}
+  textarea.catatan{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.82rem;margin-top:8px;min-height:50px;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,42,38,0.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+  .modal-overlay.open{display:flex;}
+  .modal-box{background:var(--white);border-radius:16px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:20px;}
+  .modal-close{float:right;cursor:pointer;font-size:1.2rem;color:var(--muted);}
+  .transcript-msg{padding:8px 12px;border-radius:10px;margin-bottom:8px;font-size:0.86rem;}
+  .transcript-user{background:var(--paper-alt);}
+  .transcript-assistant{background:rgba(31,138,118,0.08);}
+
+  .empty{text-align:center;color:var(--muted);padding:40px;background:var(--white);border-radius:14px;border:1px solid var(--line);}
+  .loading{text-align:center;color:var(--muted);padding:60px 0;}
+  .denied{text-align:center;color:var(--muted);padding:100px 20px;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="loading">Memuat...</div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <span class="modal-close" id="modalClose">✕</span>
+    <h3 style="margin-bottom:14px;">Transkrip Percakapan</h3>
+    <div id="transcriptContent"></div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://yxaqvywhhbsyjqfgtebn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let activeTab = 'sessions';
+  let allSessions = [];
+  let allLeads = [];
+
+  async function init(){
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(!session){ window.location.href = 'auth.html'; return; }
+
+    const { data: me } = await supabaseClient.from('users').select('roles').eq('id', session.user.id).single();
+    if(!me?.roles?.includes('admin')){
+      document.getElementById('app').innerHTML = '<div class="denied">🔒 Halaman ini khusus admin.</div>';
+      return;
+    }
+
+    const { data: logs } = await supabaseClient
+      .from('chat_logs')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    const sessionsMap = {};
+    (logs || []).forEach(log => {
+      if(!sessionsMap[log.session_id]) sessionsMap[log.session_id] = [];
+      sessionsMap[log.session_id].push(log);
+    });
+    allSessions = Object.entries(sessionsMap).map(([id, msgs]) => ({
+      id, msgs, lastTime: msgs[msgs.length-1].created_at,
+      preview: msgs.find(m => m.role === 'user')?.message || '(tidak ada pesan user)'
+    })).sort((a,b) => new Date(b.lastTime) - new Date(a.lastTime));
+
+    const { data: leads } = await supabaseClient
+      .from('leads')
+      .select('*')
+      .order('created_at', { ascending: false });
+    allLeads = leads || [];
+
+    render();
+  }
+
+  function timeAgo(dateStr){
+    const diff = Math.floor((Date.now() - new Date(dateStr)) / 60000);
+    if(diff < 60) return diff + ' menit lalu';
+    if(diff < 1440) return Math.floor(diff/60) + ' jam lalu';
+    return Math.floor(diff/1440) + ' hari lalu';
+  }
+
+  function render(){
+    document.getElementById('app').innerHTML = `
+      <div class="topbar">
+        <div class="logo">Ajarin<span>.</span> Evaluasi Chatbot</div>
+        <a href="admin.html" class="back-link">← Panel Admin</a>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat"><div class="num">${allSessions.length}</div><div class="label">Total Percakapan</div></div>
+        <div class="stat"><div class="num">${allLeads.length}</div><div class="label">Total Leads</div></div>
+        <div class="stat"><div class="num">${allLeads.filter(l => !l.followed_up).length}</div><div class="label">Belum Follow-up</div></div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab ${activeTab === 'sessions' ? 'active' : ''}" data-tab="sessions">Riwayat Chat</div>
+        <div class="tab ${activeTab === 'leads' ? 'active' : ''}" data-tab="leads">Leads</div>
+      </div>
+
+      <div id="tabContent"></div>
+    `;
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => { activeTab = tab.dataset.tab; render(); });
+    });
+
+    renderTabContent();
+  }
+
+  function renderTabContent(){
+    const el = document.getElementById('tabContent');
+
+    if(activeTab === 'sessions'){
+      if(allSessions.length === 0){
+        el.innerHTML = '<div class="empty">Belum ada percakapan chatbot.</div>';
+        return;
+      }
+      el.innerHTML = allSessions.map(s => `
+        <div class="session-card" onclick="showTranscript('${s.id}')">
+          <div class="session-top">
+            <span class="session-id">${s.id.slice(0,13)}...</span>
+            <span class="session-time">${timeAgo(s.lastTime)}</span>
+          </div>
+          <div class="session-preview">${s.preview}</div>
+          <span class="session-count">${s.msgs.length} pesan</span>
+        </div>
+      `).join('');
+    }else{
+      if(allLeads.length === 0){
+        el.innerHTML = '<div class="empty">Belum ada leads.</div>';
+        return;
+      }
+      el.innerHTML = allLeads.map(l => `
+        <div class="lead-card">
+          <div class="lead-top">
+            <div>
+              <div class="lead-name">${l.nama || 'Tanpa nama'}</div>
+              <div class="lead-detail">${l.whatsapp || '-'} · ${l.kelas_jenjang || ''} ${l.mapel_skill_dibutuhkan || ''}</div>
+            </div>
+            <span class="followed-badge ${l.followed_up ? 'followed-yes' : 'followed-no'}">${l.followed_up ? 'Sudah Follow-up' : 'Belum'}</span>
+          </div>
+          ${l.kendala ? `<div style="font-size:0.82rem;color:var(--muted);">${l.kendala}</div>` : ''}
+          <textarea class="catatan" id="catatan-${l.id}" placeholder="Catatan follow-up...">${l.catatan_admin || ''}</textarea>
+          <div style="margin-top:8px;display:flex;gap:8px;">
+            <button class="btn-sm" onclick="saveLead('${l.id}', ${!l.followed_up})">${l.followed_up ? 'Tandai Belum' : 'Tandai Sudah Follow-up'}</button>
+            <button class="btn-sm" style="background:var(--teal);" onclick="saveCatatan('${l.id}')">Simpan Catatan</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  window.showTranscript = function(sessionId){
+    const s = allSessions.find(x => x.id === sessionId);
+    document.getElementById('transcriptContent').innerHTML = s.msgs.map(m => `
+      <div class="transcript-msg transcript-${m.role}">
+        <strong>${m.role === 'user' ? '👤 User' : '🤖 Bot'}:</strong> ${m.message}
+      </div>
+    `).join('');
+    document.getElementById('modalOverlay').classList.add('open');
+  };
+  document.getElementById('modalClose').addEventListener('click', () => document.getElementById('modalOverlay').classList.remove('open'));
+
+  window.saveLead = async function(leadId, newStatus){
+    await supabaseClient.from('leads').update({ followed_up: newStatus }).eq('id', leadId);
+    init();
+  };
+  window.saveCatatan = async function(leadId){
+    const val = document.getElementById('catatan-' + leadId).value;
+    await supabaseClient.from('leads').update({ catatan_admin: val }).eq('id', leadId);
+    alert('Catatan disimpan.');
+  };
+
+  init();
+</script>
+
+</body>
+</html>
