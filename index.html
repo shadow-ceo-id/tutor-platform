@@ -295,9 +295,43 @@
       <a href="#kategori">Kategori</a>
       <a href="cari-tutor.html">Cari Tutor</a>
     </div>
-    <a href="#cari" class="btn btn-primary btn-sm nav-cta">Mulai Sekarang</a>
+    <div id="navAuthArea" class="nav-cta" style="display:none;gap:10px;align-items:center;"></div>
   </nav>
 </header>
+
+<script>
+  // Cek status login buat nampilin tombol Masuk/Daftar atau Dashboard di header
+  (function(){
+    function renderNavAuth(loggedIn){
+      const area = document.getElementById('navAuthArea');
+      area.style.display = 'inline-flex';
+      if(loggedIn){
+        area.innerHTML = '<a href="dashboard.html" class="btn btn-primary btn-sm">Dashboard</a>';
+      }else{
+        area.innerHTML = '<a href="auth.html" class="btn btn-ghost btn-sm">Masuk</a><a href="auth.html?tab=daftar" class="btn btn-primary btn-sm">Daftar</a>';
+      }
+    }
+
+    function checkSession(){
+      if(!window.supabase){
+        setTimeout(checkSession, 150);
+        return;
+      }
+      const client = window.supabase.createClient(
+        'https://yxaqvywhhbsyjqfgtebn.supabase.co',
+        'sb_publishable_DMOft_KQMR41TnigUV1Oxw_TVeHd3Bx'
+      );
+      client.auth.getSession().then(({ data: { session } }) => {
+        renderNavAuth(!!session);
+      });
+    }
+
+    const sdk = document.createElement('script');
+    sdk.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    sdk.onload = checkSession;
+    document.head.appendChild(sdk);
+  })();
+</script>
  
 <main id="top">
  
