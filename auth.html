@@ -115,14 +115,22 @@
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   // ---- Tab switching ----
+  function switchTab(tabName){
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('form').forEach(f => f.classList.remove('active'));
+    document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+    document.getElementById(tabName + 'Form').classList.add('active');
+  }
+
   document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('form').forEach(f => f.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(tab.dataset.tab + 'Form').classList.add('active');
-    });
+    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
   });
+
+  // Auto-switch ke tab Daftar kalau diakses dengan ?tab=daftar (misal dari landing page)
+  const urlTab = new URLSearchParams(window.location.search).get('tab');
+  if(urlTab === 'daftar'){
+    switchTab('signup');
+  }
 
   // ---- Role picker ----
   let selectedRole = 'client';
