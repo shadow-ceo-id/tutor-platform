@@ -72,6 +72,7 @@
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let currentUser = null;
+  let tutorProfile = null;
 
   async function init(){
     const { data: { session } } = await supabaseClient.auth.getSession();
@@ -80,6 +81,13 @@
       return;
     }
     currentUser = session.user;
+
+    const { data: profile } = await supabaseClient
+      .from('tutor_profiles')
+      .select('level, harga_per_jam, lokasi_mengajar')
+      .eq('user_id', currentUser.id)
+      .single();
+    tutorProfile = profile;
 
     const { data: slots } = await supabaseClient
       .from('availability_slots')
@@ -98,6 +106,8 @@
   }
 
   function render(slots){
+    const eligible = tutorProfile && ['aktif','terpercaya','senior'].includes(tutorProfile.level);
+
     document.getElementById('app').innerHTML = `
       <h1>Jadwal Saya</h1>
       <div class="subtitle">Buka slot jadwal kosong biar calon murid bisa langsung booking</div>
@@ -119,6 +129,36 @@
               <input type="time" id="jamSelesai" required>
             </div>
           </div>
+
+          <label style="margin-top:14px;">Tipe Sesi</label>
+          <div class="form-row">
+            <div>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
+                <input type="radio" name="tipeSesi" value="privat" checked style="width:auto;"> Privat (1 murid)
+              </label>
+            </div>
+            <div>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;${!eligible ? 'opacity:0.4;' : ''}">
+                <input type="radio" name="tipeSesi" value="grup" id="radioGrup" ${!eligible ? 'disabled' : ''} style="width:auto;"> Kelas Grup
+              </label>
+            </div>
+          </div>
+          ${!eligible ? `<p style="font-size:0.78rem;color:var(--muted);margin-top:4px;">Kelas grup terbuka mulai level ⭐ Aktif (min. 5 sesi selesai dengan rating bagus).</p>` : ''}
+
+          <div id="grupFields" style="display:none;">
+            <div class="form-row" style="margin-top:10px;">
+              <div>
+                <label>Kapasitas Maksimal</label>
+                <input type="number" id="kapasitasMaks" min="2" max="8" value="4">
+              </div>
+              <div>
+                <label>Harga per Orang (Rp)</label>
+                <input type="number" id="hargaPerOrang" min="0" step="5000" placeholder="${tutorProfile ? Math.round(tutorProfile.harga_per_jam * 0.6) : 35000}">
+              </div>
+            </div>
+            ${!tutorProfile?.lokasi_mengajar ? `<p style="font-size:0.78rem;color:var(--marigold-deep);margin-top:8px;">⚠️ Kamu belum isi lokasi mengajar di profil. <a href="profil-tutor.html" style="color:var(--marigold-deep);">Isi dulu di sini</a> — murid kelas grup datang ke lokasi ini.</p>` : ''}
+          </div>
+
           <div class="msg" id="slotMsg"></div>
           <button type="submit" class="btn" id="addBtn">Tambah Slot</button>
         </form>
@@ -130,12 +170,13 @@
           ${slots.length === 0 ? '<div class="empty">Belum ada jadwal. Tambah slot dulu di atas ya.</div>' : slots.map(s => `
             <div class="slot-item" data-id="${s.id}">
               <div class="slot-info">
-                <div class="tanggal">${formatTanggal(s.tanggal)}</div>
-                <div class="jam">${s.jam_mulai.slice(0,5)} – ${s.jam_selesai.slice(0,5)}</div>
+                <div class="tanggal">${formatTanggal(s.tanggal)} ${s.tipe_sesi === 'grup' ? '· 👥 Grup' : '· 👤 Privat'}</div>
+                <div class="jam">${s.jam_mulai.slice(0,5)} – ${s.jam_selesai.slice(0,5)}${s.tipe_sesi === 'grup' ? ` · ${s.kapasitas_terisi}/${s.kapasitas_maks} terisi` : ''}</div>
               </div>
               <div style="display:flex;align-items:center;gap:10px;">
                 <span class="badge ${s.status}">${s.status === 'kosong' ? 'Kosong' : 'Dibooking'}</span>
-                ${s.status === 'kosong' ? `<button class="btn btn-outline" onclick="hapusSlot('${s.id}')">Hapus</button>` : ''}
+                ${s.tipe_sesi === 'grup' && s.kapasitas_terisi === 0 ? `<button class="btn btn-outline" onclick="editKapasitas('${s.id}', ${s.kapasitas_maks})">Edit Kuota</button>` : ''}
+                ${s.kapasitas_terisi === 0 ? `<button class="btn btn-outline" onclick="hapusSlot('${s.id}')">Hapus</button>` : ''}
               </div>
             </div>
           `).join('')}
@@ -145,6 +186,12 @@
       <a href="dashboard.html" class="nav-link">← Kembali ke Dashboard</a>
     `;
 
+    document.querySelectorAll('input[name="tipeSesi"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        document.getElementById('grupFields').style.display = radio.value === 'grup' && radio.checked ? 'block' : 'none';
+      });
+    });
+
     document.getElementById('slotForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('addBtn');
@@ -153,6 +200,7 @@
       const tanggal = document.getElementById('tanggal').value;
       const jamMulai = document.getElementById('jamMulai').value;
       const jamSelesai = document.getElementById('jamSelesai').value;
+      const tipeSesi = document.querySelector('input[name="tipeSesi"]:checked').value;
 
       if(jamSelesai <= jamMulai){
         msgEl.textContent = 'Jam selesai harus setelah jam mulai.';
@@ -160,12 +208,29 @@
         return;
       }
 
+      const payload = {
+        tutor_id: currentUser.id,
+        tanggal, jam_mulai: jamMulai, jam_selesai: jamSelesai,
+        tipe_sesi: tipeSesi
+      };
+
+      if(tipeSesi === 'grup'){
+        const kapasitas = parseInt(document.getElementById('kapasitasMaks').value) || 4;
+        const hargaOrang = parseInt(document.getElementById('hargaPerOrang').value) || Math.round(tutorProfile.harga_per_jam * 0.6);
+
+        if(!tutorProfile?.lokasi_mengajar){
+          msgEl.textContent = 'Isi dulu lokasi mengajar di profil sebelum buka kelas grup.';
+          msgEl.className = 'msg show error';
+          return;
+        }
+
+        payload.kapasitas_maks = kapasitas;
+        payload.harga_per_orang = hargaOrang;
+      }
+
       btn.disabled = true; btn.textContent = 'Menyimpan...';
 
-      const { error } = await supabaseClient.from('availability_slots').insert({
-        tutor_id: currentUser.id,
-        tanggal, jam_mulai: jamMulai, jam_selesai: jamSelesai
-      });
+      const { error } = await supabaseClient.from('availability_slots').insert(payload);
 
       if(error){
         msgEl.textContent = error.code === '23505'
@@ -183,6 +248,28 @@
   async function hapusSlot(id){
     if(!confirm('Yakin mau hapus slot ini?')) return;
     await supabaseClient.from('availability_slots').delete().eq('id', id);
+    init();
+  }
+
+  async function editKapasitas(id, kapasitasSaatIni){
+    const baru = prompt('Ubah kapasitas maksimal jadi berapa?', kapasitasSaatIni);
+    if(baru === null) return;
+
+    const kapasitasBaru = parseInt(baru);
+    if(isNaN(kapasitasBaru) || kapasitasBaru < 1){
+      alert('Masukkan angka yang valid.');
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from('availability_slots')
+      .update({ kapasitas_maks: kapasitasBaru })
+      .eq('id', id);
+
+    if(error){
+      alert('Gagal update kapasitas: ' + error.message);
+      return;
+    }
     init();
   }
 

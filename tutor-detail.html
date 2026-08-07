@@ -183,18 +183,25 @@
           <h2>Pilih Jadwal</h2>
           <div class="slot-list" id="slotList">
             ${slots.length === 0 ? '<div class="empty">Tutor belum membuka slot jadwal.</div>' : slots.map(s => `
-              <div class="slot-item" data-id="${s.id}" data-tanggal="${s.tanggal}" data-mulai="${s.jam_mulai}" data-selesai="${s.jam_selesai}">
+              <div class="slot-item" data-id="${s.id}" data-tanggal="${s.tanggal}" data-mulai="${s.jam_mulai}" data-selesai="${s.jam_selesai}" data-tipe="${s.tipe_sesi || 'privat'}" data-harga="${s.tipe_sesi === 'grup' ? s.harga_per_orang : profile.harga_per_jam}">
                 <div class="slot-info">
-                  <div class="tanggal">${formatTanggal(s.tanggal)}</div>
-                  <div class="jam">${s.jam_mulai.slice(0,5)} – ${s.jam_selesai.slice(0,5)}</div>
+                  <div class="tanggal">${formatTanggal(s.tanggal)} ${s.tipe_sesi === 'grup' ? '<span style="background:var(--marigold);color:var(--ink);font-size:0.66rem;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;">👥 GRUP</span>' : ''}</div>
+                  <div class="jam">${s.jam_mulai.slice(0,5)} – ${s.jam_selesai.slice(0,5)}
+                    ${s.tipe_sesi === 'grup' ? ` · ${formatRupiah(s.harga_per_orang)}/orang · ${s.kapasitas_maks - s.kapasitas_terisi} kursi tersisa` : ''}
+                  </div>
                 </div>
               </div>
             `).join('')}
           </div>
 
           ${slots.length > 0 ? `
-            <label>Alamat Lengkap untuk Sesi *</label>
-            <textarea id="alamat" placeholder="Jl. Contoh No. 12, RT/RW, Kelurahan, patokan terdekat..." required></textarea>
+            <div id="alamatField">
+              <label>Alamat Lengkap untuk Sesi *</label>
+              <textarea id="alamat" placeholder="Jl. Contoh No. 12, RT/RW, Kelurahan, patokan terdekat..." required></textarea>
+            </div>
+            <div id="lokasiGrupInfo" style="display:none;font-size:0.84rem;color:var(--muted);background:var(--paper-alt);padding:12px 14px;border-radius:10px;">
+              📍 Ini kelas grup — kamu yang datang ke tempat tutor. Alamat lengkap muncul otomatis setelah pembayaran.
+            </div>
 
             <label>Catatan / Materi yang Dibutuhkan (opsional)</label>
             <textarea id="catatan" placeholder="Misal: butuh bantuan persiapan ujian matematika kelas 6"></textarea>
@@ -214,11 +221,19 @@
           id: item.dataset.id,
           tanggal: item.dataset.tanggal,
           jam_mulai: item.dataset.mulai,
-          jam_selesai: item.dataset.selesai
+          jam_selesai: item.dataset.selesai,
+          tipe: item.dataset.tipe,
+          harga: parseInt(item.dataset.harga)
         };
+
+        const isGrup = selectedSlot.tipe === 'grup';
+        document.getElementById('alamatField').style.display = isGrup ? 'none' : 'block';
+        document.getElementById('lokasiGrupInfo').style.display = isGrup ? 'block' : 'none';
+        document.getElementById('alamat').required = !isGrup;
+
         const btn = document.getElementById('bookBtn');
         btn.disabled = false;
-        btn.textContent = `Pesan Slot Ini — ${formatRupiah(profile.harga_per_jam)}`;
+        btn.textContent = `Pesan Slot Ini — ${formatRupiah(selectedSlot.harga)}`;
       });
     });
 
@@ -235,13 +250,19 @@
     }
     if(!selectedSlot) return;
 
-    const alamat = document.getElementById('alamat').value.trim();
+    const isGrup = selectedSlot.tipe === 'grup';
     const msgEl = document.getElementById('bookingMsg');
+    let lokasi;
 
-    if(!alamat){
-      msgEl.textContent = 'Alamat wajib diisi biar tutor bisa datang ke lokasi yang tepat.';
-      msgEl.className = 'msg show error';
-      return;
+    if(isGrup){
+      lokasi = tutorProfile.lokasi_mengajar || 'Lokasi akan dikonfirmasi tutor setelah pembayaran';
+    }else{
+      lokasi = document.getElementById('alamat').value.trim();
+      if(!lokasi){
+        msgEl.textContent = 'Alamat wajib diisi biar tutor bisa datang ke lokasi yang tepat.';
+        msgEl.className = 'msg show error';
+        return;
+      }
     }
 
     const btn = document.getElementById('bookBtn');
@@ -255,8 +276,8 @@
         client_id: currentUser.id,
         kategori: (tutorProfile.kategori || [])[0] || null,
         catatan_client: document.getElementById('catatan').value.trim(),
-        lokasi: alamat,
-        harga_disepakati: tutorProfile.harga_per_jam,
+        lokasi: lokasi,
+        harga_disepakati: selectedSlot.harga,
         status: 'menunggu_pembayaran',
         pin_konfirmasi: String(Math.floor(1000 + Math.random() * 9000))
       })
@@ -264,7 +285,10 @@
       .single();
 
     if(error){
-      msgEl.textContent = 'Gagal membuat booking: ' + error.message;
+      const isFull = error.message?.includes('kapasitas') || error.code === '23505';
+      msgEl.textContent = isFull
+        ? 'Maaf, slot ini baru saja penuh diambil orang lain. Coba pilih slot lain.'
+        : 'Gagal membuat booking: ' + error.message;
       msgEl.className = 'msg show error';
       btn.disabled = false;
       btn.textContent = `Pesan Slot Ini`;

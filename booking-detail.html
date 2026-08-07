@@ -211,6 +211,7 @@
             <button class="chat-send-btn" id="chatSendBtn">Kirim</button>
           </div>
           ${!['selesai'].includes(booking.status) ? `<span class="link-danger" id="disputeBtn">⚠️ Laporkan Masalah</span>` : ''}
+          ${isTutor && !['selesai'].includes(booking.status) ? `<p style="font-size:0.76rem;color:var(--muted);margin-top:6px;">Murid gak hadir tanpa kabar? Laporkan lewat tombol di atas biar admin bisa proses dana ke kamu.</p>` : ''}
         </div>
       ` : ''}
 
@@ -284,6 +285,7 @@
     if(booking.status === 'diterima' || booking.status === 'berlangsung'){
       const jamSisa = getJamSisaKeSesi();
       const refundInfo = jamSisa >= 24 ? '100% (masih >24 jam)' : jamSisa >= 2 ? '50% (2–24 jam sebelum jadwal)' : '0% (kurang dari 2 jam)';
+      const sudahLewatJadwal = jamSisa < 0; // waktu sesi sudah lewat
 
       area.innerHTML = `
         <div class="card">
@@ -315,9 +317,21 @@
             <div class="msg" id="cancelMsg"></div>
           </div>
         ` : ''}
+        ${isTutor && sudahLewatJadwal ? `
+          <div class="card" style="border-color:var(--error);">
+            <h2 style="color:var(--error);">Murid Tidak Hadir?</h2>
+            <p style="font-size:0.82rem;color:var(--muted);margin-bottom:10px;">
+              Kalau murid tidak muncul atau tidak bisa dihubungi sama sekali di jadwal yang disepakati, laporkan di sini. Client akan diberi 24 jam untuk merespon sebelum dana diproses sesuai kebijakan platform (default: dana penuh ke tutor untuk kasus no-show tanpa kabar).
+            </p>
+            <button class="btn btn-danger" id="noShowBtn">Laporkan Murid Tidak Hadir</button>
+            <div class="msg" id="noShowMsg"></div>
+          </div>
+        ` : ''}
       `;
       if(isTutor){
         document.getElementById('confirmPinBtn').addEventListener('click', confirmPin);
+        const noShowBtn = document.getElementById('noShowBtn');
+        if(noShowBtn) noShowBtn.addEventListener('click', handleReportNoShow);
       }else{
         document.getElementById('cancelBtn').addEventListener('click', () => handleCancel(null));
       }
@@ -508,6 +522,26 @@
       sender_id: currentUser.id,
       pesan
     });
+  }
+
+  async function handleReportNoShow(){
+    if(!confirm('Laporkan murid tidak hadir? Client akan diberi 24 jam untuk merespon sebelum dana diproses sesuai kebijakan platform.')) return;
+
+    const btn = document.getElementById('noShowBtn');
+    const msgEl = document.getElementById('noShowMsg');
+    btn.disabled = true; btn.textContent = 'Memproses...';
+
+    const { error } = await supabaseClient.rpc('report_no_show', { p_booking_id: booking.id });
+
+    if(error){
+      msgEl.textContent = 'Gagal lapor: ' + error.message;
+      msgEl.className = 'msg show error';
+      btn.disabled = false; btn.textContent = 'Laporkan Murid Tidak Hadir';
+      return;
+    }
+
+    booking.status = 'disengketakan';
+    render();
   }
 
   async function handleDispute(){

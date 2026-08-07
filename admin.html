@@ -122,6 +122,7 @@
                 <div>
                   <div class="item-title">${b.client?.nama} ↔ ${b.tutor?.nama}</div>
                   <div class="item-sub">${b.kategori || '-'} · ${formatRupiah(b.harga_disepakati)}</div>
+                  ${b.alasan_dispute === 'no_show_murid' ? `<div style="font-size:0.74rem;color:var(--error);font-weight:700;margin-top:4px;">🚩 Dilaporkan: Murid Tidak Hadir — kebijakan default lepas ke tutor kecuali ada bukti sanggahan di chat</div>` : ''}
                 </div>
               </div>
               <div class="btn-row">
