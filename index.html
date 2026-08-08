@@ -645,6 +645,7 @@
   let isChatOpen = false;
   let unreadCount = 0;
   let bodyScrollY = 0;
+  let activePromoContext = null;
 
   function updateBadge(){
     const badge = document.getElementById('chatBadge');
@@ -695,6 +696,21 @@
     body.scrollTop = body.scrollHeight;
   }
  
+  function addBotMessageHTML(html){
+    const body = document.getElementById('chatBody');
+    const el = document.createElement('div');
+    el.className = 'msg msg-bot';
+    el.innerHTML = html;
+    body.appendChild(el);
+    scrollChatToBottom();
+  }
+
+  // Ubah URL polos jadi <a> yang bisa diklik, dan escape teks lain biar aman dari HTML injection
+  function linkifyEscaped(text){
+    const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return escaped.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:underline;">$1</a>');
+  }
+
   function addBotMessage(text, isInitialGreeting){
     const body = document.getElementById('chatBody');
     const el = document.createElement('div');
@@ -891,7 +907,7 @@
       const res = await fetch(CHAT_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: chatHistory })
+        body: JSON.stringify({ messages: chatHistory, context: activePromoContext ? { promo: activePromoContext } : undefined })
       });
       const data = await res.json();
       hideTyping();
@@ -1005,10 +1021,41 @@
     window.location.href = 'cari-tutor.html' + (q ? '?q=' + encodeURIComponent(q) : '');
   });
 
-  // Kalau dibuka dari klik notifikasi broadcast (?chat=1), langsung buka chat widget-nya
-  if(new URLSearchParams(window.location.search).get('chat') === '1'){
-    setTimeout(() => openChat(), 300);
+  // Kalau dibuka dari klik notifikasi broadcast (?chat=1&promo=<id>),
+  // buka chat widget dan tampilin promo terakhir sebagai pesan bot (gambar + link bisa diklik),
+  // plus simpen konteksnya biar chatbot ngerti kalau user nanya soal promo ini.
+  async function loadPromoFromUrl(){
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('chat') !== '1') return;
+
+    const promoId = params.get('promo');
+    if(promoId){
+      try{
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/push_broadcasts?id=eq.${promoId}&select=id,judul,isi,gambar_url,konteks_ai`, {
+          headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+        });
+        const rows = await res.json();
+        if(Array.isArray(rows) && rows.length > 0){
+          activePromoContext = rows[0];
+        }
+      }catch(e){
+        console.error('Gagal load promo:', e);
+      }
+    }
+
+    openChat();
+
+    if(activePromoContext){
+      let html = '';
+      if(activePromoContext.gambar_url){
+        html += `<img src="${activePromoContext.gambar_url}" style="width:100%;border-radius:10px;margin-bottom:8px;display:block;">`;
+      }
+      html += `<strong>${activePromoContext.judul}</strong><br>${linkifyEscaped(activePromoContext.isi)}`;
+      addBotMessageHTML(html);
+    }
   }
+
+  loadPromoFromUrl();
 </script>
  
 </body>
