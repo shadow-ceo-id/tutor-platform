@@ -95,6 +95,12 @@ module.exports = async (req, res) => {
       systemPrompt += `\n\nUSER YANG SEDANG CHAT SUDAH LOGIN. Email: ${context.email}${context.nama ? `, Nama: ${context.nama}` : ''}. Kalau mereka tanya soal booking mereka sendiri, LANGSUNG pakai tool cek_status_booking dengan email ini tanpa nanya ulang.`;
     }
 
+    // Kalau user datang dari klik notifikasi broadcast promo, kasih tau Claude detail promonya
+    // biar bisa jawab pertanyaan soal promo itu dengan akurat (syarat, ketentuan, dll).
+    if (context?.promo) {
+      systemPrompt += `\n\nUSER SEDANG LIAT PROMO INI (baru diklik dari notifikasi): "${context.promo.judul}" — ${context.promo.isi}${context.promo.konteks_ai ? `\nDetail tambahan buat kamu jawab pertanyaan soal promo ini: ${context.promo.konteks_ai}` : ''}\nKalau user nanya soal promo ini, jawab pakai info di atas. Jangan mengarang syarat/ketentuan yang tidak disebutkan.`;
+    }
+
     let conversationMessages = [...messages];
     let finalReply = null;
     let loopGuard = 0;
