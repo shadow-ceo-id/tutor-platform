@@ -127,8 +127,23 @@
     let userContext = null;
     let displayLog = [];
     let chatBodyRendered = false;
+    let existingContact = null;
 
-    const STORAGE_KEY = 'ajarin_chat_state_' + window.location.pathname;
+    async function loadExistingContact(){
+      if(userContext?.nama || existingContact) return; // udah login atau udah pernah dicek
+      try{
+        const anonId = getAnonId();
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?anon_id=eq.${anonId}&nama=not.is.null&select=nama,whatsapp&limit=1`, {
+          headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+        });
+        const rows = await res.json();
+        if(Array.isArray(rows) && rows.length > 0) existingContact = rows[0];
+      }catch(e){
+        console.error('Gagal cek kontak lama:', e);
+      }
+    }
+
+    const STORAGE_KEY = 'ajarin_chat_state'; // key global, SAMA kayak index.html biar chat nyambung lintas halaman
     try{
       const saved = sessionStorage.getItem(STORAGE_KEY);
       if(saved){
@@ -207,11 +222,15 @@
       overlay.classList.add('open');
       if(chatOpened){
         renderDisplayLogOnce();
+        loadExistingContact();
         setupPushNotification(supabaseClient, userContext);
       }else{
         chatOpened = true;
-        addBot('Halo Kak! 👋 Ada yang bisa dibantu seputar Ajarin?');
-        persistState();
+        loadExistingContact().then(() => {
+          const sapaan = userContext?.nama ? `, Kak ${userContext.nama.split(' ')[0]}` : (existingContact?.nama ? `, Kak ${existingContact.nama.split(' ')[0]}` : ' Kak');
+          addBot(`Halo${sapaan}! 👋 Ada yang bisa dibantu seputar Ajarin?`);
+          persistState();
+        });
         // Panggil langsung (bukan dibungkus proses lain) biar user-gesture dari klik ini
         // masih "hidup" sampai ke pushManager.subscribe().
         setupPushNotification(supabaseClient, userContext);
@@ -234,7 +253,10 @@
         const res = await fetch(CHAT_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: chatHistory, context: userContext })
+          body: JSON.stringify({
+            messages: chatHistory,
+            context: { ...(userContext || {}), existingContact: existingContact || undefined }
+          })
         });
         const data = await res.json();
         hideTyping();
