@@ -75,6 +75,16 @@
         <option value="tutor">Khusus Tutor</option>
       </select>
 
+      <label>Gambar Promo (opsional)</label>
+      <input type="file" id="gambarInput" accept="image/*">
+      <div id="gambarPreview" style="display:none;margin-top:10px;">
+        <img id="gambarPreviewImg" style="max-width:100%;border-radius:10px;border:1px solid var(--line);">
+      </div>
+
+      <label>Konteks buat Chatbot (opsional)</label>
+      <textarea id="konteksAi" placeholder="Jelasin detail promo ini biar chatbot bisa jawab kalau ada yang nanya. Misal: Diskon 20% khusus booking tutor Matematika, berlaku 8-15 Agustus, min. 4 sesi, kode promo MTK20."></textarea>
+      <div style="font-size:0.76rem;color:var(--muted);margin-top:4px;">Info ini nggak ditampilin ke user, cuma dipakai chatbot buat jawab pertanyaan soal promo ini.</div>
+
       <div class="msg show info">⚠️ Broadcast diproses lewat cron job, jadi bisa butuh beberapa menit sampai benar-benar terkirim ke semua penerima.</div>
       <div class="msg" id="broadcastMsg"></div>
       <button type="submit" class="btn" id="sendBtn">Antri Kirim Broadcast</button>
@@ -116,16 +126,31 @@
       return;
     }
     el.innerHTML = data.map(b => `
-      <div class="history-item">
-        <div class="history-top">
-          <span>${b.judul}</span>
-          <span class="status-badge status-${b.status}">${b.status === 'terkirim' ? `Terkirim (${b.total_terkirim})` : 'Menunggu'}</span>
+      <div class="history-item" style="display:flex;gap:12px;">
+        ${b.gambar_url ? `<img src="${b.gambar_url}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">` : ''}
+        <div style="flex:1;min-width:0;">
+          <div class="history-top">
+            <span>${b.judul}</span>
+            <span class="status-badge status-${b.status}">${b.status === 'terkirim' ? `Terkirim (${b.total_terkirim})` : 'Menunggu'}</span>
+          </div>
+          <div class="history-meta">${b.isi}</div>
+          <div class="history-meta">Target: ${b.target_role} · ${new Date(b.created_at).toLocaleString('id-ID')}</div>
         </div>
-        <div class="history-meta">${b.isi}</div>
-        <div class="history-meta">Target: ${b.target_role} · ${new Date(b.created_at).toLocaleString('id-ID')}</div>
       </div>
     `).join('');
   }
+
+  document.getElementById('gambarInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    const preview = document.getElementById('gambarPreview');
+    const previewImg = document.getElementById('gambarPreviewImg');
+    if(file){
+      previewImg.src = URL.createObjectURL(file);
+      preview.style.display = 'block';
+    }else{
+      preview.style.display = 'none';
+    }
+  });
 
   document.getElementById('broadcastForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -133,10 +158,30 @@
     const msgEl = document.getElementById('broadcastMsg');
     btn.disabled = true; btn.textContent = 'Mengantri...';
 
+    let gambarUrl = null;
+    const file = document.getElementById('gambarInput').files[0];
+    if(file){
+      btn.textContent = 'Upload gambar...';
+      const ext = file.name.split('.').pop();
+      const path = `promo-${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabaseClient.storage.from('broadcast-images').upload(path, file);
+      if(uploadErr){
+        msgEl.textContent = 'Gagal upload gambar: ' + uploadErr.message;
+        msgEl.className = 'msg show error';
+        btn.disabled = false; btn.textContent = 'Antri Kirim Broadcast';
+        return;
+      }
+      const { data: urlData } = supabaseClient.storage.from('broadcast-images').getPublicUrl(path);
+      gambarUrl = urlData.publicUrl;
+    }
+
+    btn.textContent = 'Mengantri...';
     const { error } = await supabaseClient.from('push_broadcasts').insert({
       judul: document.getElementById('judul').value.trim(),
       isi: document.getElementById('isi').value.trim(),
       target_role: document.getElementById('targetRole').value,
+      gambar_url: gambarUrl,
+      konteks_ai: document.getElementById('konteksAi').value.trim() || null,
       dibuat_oleh: currentUser.id
     });
 
@@ -150,6 +195,7 @@
     msgEl.textContent = 'Broadcast berhasil diantrikan! Akan terkirim dalam beberapa menit.';
     msgEl.className = 'msg show success';
     document.getElementById('broadcastForm').reset();
+    document.getElementById('gambarPreview').style.display = 'none';
     btn.disabled = false; btn.textContent = 'Antri Kirim Broadcast';
     loadHistory();
   });
