@@ -646,6 +646,9 @@
   let unreadCount = 0;
   let bodyScrollY = 0;
   let activePromoContext = null;
+  // displayLog nyimpen HTML yang udah dirender, buat di-restore kalau user pindah halaman.
+  // Dideklarasi di sini (sebelum IIFE restore di bawah) biar nggak kena temporal dead zone.
+  let displayLog = [];
 
   // Restore percakapan sebelumnya kalau ada (biar pindah halaman nggak reset chat).
   // sessionStorage scope-nya per tab, ilang kalau tab beneran ditutup — sesuai ekspektasi.
@@ -748,9 +751,6 @@
     escaped = escaped.replace(/(^|[\s(])(\/[a-zA-Z0-9_-]+\.html(?:\?[^\s)]*)?)/g, '$1<a href="$2" style="color:var(--teal);text-decoration:underline;font-weight:600;">$2</a>');
     return escaped.replace(/\n/g, '<br>');
   }
-
-  // displayLog nyimpen HTML yang udah dirender, buat di-restore kalau user pindah halaman
-  let displayLog = [];
 
   function persistChatState(){
     try{
