@@ -647,6 +647,21 @@
   let bodyScrollY = 0;
   let activePromoContext = null;
 
+  // Restore percakapan sebelumnya kalau ada (biar pindah halaman nggak reset chat).
+  // sessionStorage scope-nya per tab, ilang kalau tab beneran ditutup — sesuai ekspektasi.
+  (function restoreChatState(){
+    try{
+      const saved = sessionStorage.getItem('ajarin_chat_state');
+      if(!saved) return;
+      const state = JSON.parse(saved);
+      chatHistory = state.chatHistory || [];
+      sessionId = state.sessionId || null;
+      chatOpened = !!state.chatOpened;
+      displayLog = state.displayLog || [];
+      activePromoContext = state.activePromoContext || null;
+    }catch(e){ /* abaikan kalau datanya corrupt */ }
+  })();
+
   function updateBadge(){
     const badge = document.getElementById('chatBadge');
     if(unreadCount > 0){
@@ -668,6 +683,20 @@
     window.scrollTo(0, bodyScrollY);
   }
 
+  let chatBodyRendered = false;
+  function renderDisplayLogOnce(){
+    if(chatBodyRendered || displayLog.length === 0) return;
+    const body = document.getElementById('chatBody');
+    displayLog.forEach(item => {
+      const el = document.createElement('div');
+      el.className = item.type === 'bot' ? 'msg msg-bot' : 'msg msg-user';
+      el.innerHTML = item.html;
+      body.appendChild(el);
+    });
+    chatBodyRendered = true;
+    scrollChatToBottom();
+  }
+
   function openChat(){
     document.getElementById('chatOverlay').classList.add('open');
     isChatOpen = true;
@@ -679,7 +708,9 @@
     // bukan cuma local Notification API.
     setupPushNotification();
 
-    if(!chatOpened){
+    if(chatOpened){
+      renderDisplayLogOnce();
+    }else{
       chatOpened = true;
       sessionId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
       addBotMessage('Halo Kak! 👋 Selamat datang di Ajarin. Ada yang bisa dibantu — mau cari tutor, atau ada yang mau ditanyain dulu?', true);
@@ -703,21 +734,42 @@
     el.innerHTML = html;
     body.appendChild(el);
     scrollChatToBottom();
+    displayLog.push({ type: 'bot', html });
+    persistChatState();
   }
 
-  // Ubah URL polos jadi <a> yang bisa diklik, dan escape teks lain biar aman dari HTML injection
+  // Ubah URL/path polos jadi <a> yang bisa diklik, escape teks lain biar aman dari HTML injection,
+  // dan ubah baris baru jadi <br> biar ada jeda antar poin kayak yang diminta.
   function linkifyEscaped(text){
-    const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    return escaped.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:underline;">$1</a>');
+    let escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // URL absolut (https://...)
+    escaped = escaped.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:underline;font-weight:600;">$1</a>');
+    // Path relatif yang disebut bot, contoh: /auth.html atau /profil-tutor.html
+    escaped = escaped.replace(/(^|[\s(])(\/[a-zA-Z0-9_-]+\.html(?:\?[^\s)]*)?)/g, '$1<a href="$2" style="color:var(--teal);text-decoration:underline;font-weight:600;">$2</a>');
+    return escaped.replace(/\n/g, '<br>');
+  }
+
+  // displayLog nyimpen HTML yang udah dirender, buat di-restore kalau user pindah halaman
+  let displayLog = [];
+
+  function persistChatState(){
+    try{
+      sessionStorage.setItem('ajarin_chat_state', JSON.stringify({
+        sessionId, chatHistory, chatOpened, displayLog, activePromoContext
+      }));
+    }catch(e){ /* storage penuh/disabled, abaikan */ }
   }
 
   function addBotMessage(text, isInitialGreeting){
     const body = document.getElementById('chatBody');
     const el = document.createElement('div');
     el.className = 'msg msg-bot';
-    el.textContent = text;
+    const html = linkifyEscaped(text);
+    el.innerHTML = html;
     body.appendChild(el);
     scrollChatToBottom();
+    displayLog.push({ type: 'bot', html });
+    persistChatState();
 
     // Kalau chat lagi ditutup (misal user lagi baca-baca landing page),
     // kasih badge + notifikasi browser biar user tau ada balasan baru.
@@ -743,6 +795,8 @@
     el.textContent = text;
     body.appendChild(el);
     scrollChatToBottom();
+    displayLog.push({ type: 'user', html: el.innerHTML });
+    persistChatState();
   }
   function showTyping(){
     const body = document.getElementById('chatBody');
@@ -933,8 +987,8 @@
     const text = input.value.trim();
     if(!text) return;
  
-    addUserMessage(text);
     chatHistory.push({ role: 'user', content: text });
+    addUserMessage(text);
     logMessageToSupabase('user', text, null);
     input.value = '';
     showTyping();
