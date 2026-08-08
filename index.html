@@ -1004,6 +1004,11 @@
     const q = document.getElementById('heroSearchInput').value.trim();
     window.location.href = 'cari-tutor.html' + (q ? '?q=' + encodeURIComponent(q) : '');
   });
+
+  // Kalau dibuka dari klik notifikasi broadcast (?chat=1), langsung buka chat widget-nya
+  if(new URLSearchParams(window.location.search).get('chat') === '1'){
+    setTimeout(() => openChat(), 300);
+  }
 </script>
  
 </body>
