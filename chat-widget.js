@@ -132,12 +132,20 @@
     async function loadExistingContact(){
       if(userContext?.nama || existingContact) return; // udah login atau udah pernah dicek
       try{
+        const endpoint = await getExistingSubscriptionEndpoint();
+        if(endpoint){
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(endpoint)}&nama=not.is.null&select=nama,whatsapp&limit=1`, {
+            headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+          });
+          const rows = await res.json();
+          if(Array.isArray(rows) && rows.length > 0){ existingContact = rows[0]; return; }
+        }
         const anonId = getAnonId();
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?anon_id=eq.${anonId}&nama=not.is.null&select=nama,whatsapp&limit=1`, {
+        const res2 = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?anon_id=eq.${anonId}&nama=not.is.null&select=nama,whatsapp&limit=1`, {
           headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
         });
-        const rows = await res.json();
-        if(Array.isArray(rows) && rows.length > 0) existingContact = rows[0];
+        const rows2 = await res2.json();
+        if(Array.isArray(rows2) && rows2.length > 0) existingContact = rows2[0];
       }catch(e){
         console.error('Gagal cek kontak lama:', e);
       }
@@ -322,6 +330,20 @@
     return id;
   }
 
+  // Ambil endpoint push subscription yang UDAH ada, tanpa minta izin baru.
+  // Lebih awet dibanding anon_id di localStorage buat identifikasi device balik lagi.
+  async function getExistingSubscriptionEndpoint(){
+    try{
+      if(!('serviceWorker' in navigator)) return null;
+      const registration = await navigator.serviceWorker.getRegistration();
+      if(!registration) return null;
+      const subscription = await registration.pushManager.getSubscription();
+      return subscription?.endpoint || null;
+    }catch(e){
+      return null;
+    }
+  }
+
   // DEBUG_MODE: sementara true biar error keliatan lewat alert().
   // Matikan (set false) lagi setelah masalah subscribe ketemu & fix.
   const DEBUG_MODE = false;
@@ -333,7 +355,16 @@
 
     try{
       const { data: { session } } = await supabaseClient.auth.getSession();
-      const filter = session ? `user_id=eq.${session.user.id}` : `anon_id=eq.${getAnonId()}`;
+      let filter;
+      if(session){
+        filter = `user_id=eq.${session.user.id}`;
+      }else{
+        const anonId = getAnonId();
+        const endpoint = await getExistingSubscriptionEndpoint();
+        filter = endpoint
+          ? `or=(endpoint.eq.${encodeURIComponent(endpoint)},anon_id.eq.${anonId})`
+          : `anon_id=eq.${anonId}`;
+      }
       await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?${filter}`, {
         method: 'PATCH',
         headers: {
