@@ -798,12 +798,25 @@
 
   // Pecah jawaban panjang jadi beberapa bubble terpisah (per paragraf),
   // dikirim beruntun dengan jeda dikit biar kerasa natural kayak orang ngetik.
+  // Jarak antar bubble (ms) — dalamnya termasuk waktu "mengetik" biar kerasa natural,
+  // kasih waktu user baca bubble sebelumnya sebelum bubble berikutnya muncul.
+  const BUBBLE_GAP_MS = 3200;
+  const TYPING_DURATION_MS = 1100;
+
   function addBotMessage(text, isInitialGreeting){
     const chunks = text.split(/\n\s*\n+/).map(c => c.trim()).filter(c => c.length > 0);
     if(chunks.length === 0) chunks.push(text);
 
     chunks.forEach((chunk, i) => {
+      const showAt = i * BUBBLE_GAP_MS;
+
+      if(i > 0){
+        // Munculin bubble "sedang mengetik" sesaat sebelum bubble ini nongol
+        setTimeout(() => showTyping(), Math.max(0, showAt - TYPING_DURATION_MS));
+      }
+
       setTimeout(() => {
+        if(i > 0) hideTyping();
         addBotBubble(chunk);
         if(i === chunks.length - 1){
           // Notifikasi/badge cuma sekali, pas bubble terakhir muncul
@@ -822,7 +835,7 @@
             }
           }
         }
-      }, i * 450);
+      }, showAt);
     });
   }
   function addUserMessage(text){
