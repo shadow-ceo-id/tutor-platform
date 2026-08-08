@@ -98,9 +98,12 @@ module.exports = async (req, res) => {
 
       let sentCount = 0;
       for (const sub of subs) {
+        const namaPanggilan = sub.nama ? sub.nama.split(' ')[0] : 'Kak';
+        const personalisasi = (text) => text.replace(/\{nama\}/gi, namaPanggilan);
+
         const ok = await sendToSubscription(sub, {
-          title: bc.judul,
-          body: bc.isi,
+          title: personalisasi(bc.judul),
+          body: personalisasi(bc.isi),
           url: `/index.html?chat=1&promo=${bc.id}`,
           image: bc.gambar_url || undefined,
         });
