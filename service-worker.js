@@ -22,6 +22,7 @@ self.addEventListener('push', (event) => {
     body: data.body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
+    image: data.image || undefined,
     data: { url: data.url || '/dashboard.html' },
     vibrate: [100, 50, 100]
   };
