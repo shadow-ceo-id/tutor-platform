@@ -651,18 +651,46 @@
   // Dideklarasi di sini (sebelum IIFE restore di bawah) biar nggak kena temporal dead zone.
   let displayLog = [];
 
-  // Cek apakah device ini (anon_id) udah pernah kasih nama sebelumnya, biar chatbot
-  // nggak nanya ulang di sesi baru walau chatHistory sendiri udah kereset.
+  // Ambil endpoint push subscription yang UDAH ada (kalau ada), tanpa minta izin baru.
+  // Endpoint ini lebih awet daripada anon_id di localStorage — dia nempel ke izin
+  // notifikasi level OS, jadi tetap sama walau localStorage kereset (kejadian di sebagian iOS PWA).
+  async function getExistingSubscriptionEndpoint(){
+    try{
+      if(!('serviceWorker' in navigator)) return null;
+      const registration = await navigator.serviceWorker.getRegistration();
+      if(!registration) return null;
+      const subscription = await registration.pushManager.getSubscription();
+      return subscription?.endpoint || null;
+    }catch(e){
+      return null;
+    }
+  }
+
+  // Cek apakah device ini udah pernah kasih nama sebelumnya, biar chatbot nggak nanya
+  // ulang di sesi baru. Coba lewat endpoint dulu (lebih awet), baru fallback ke anon_id.
   async function loadExistingContact(){
     if(existingContact) return; // udah ada dari restore state, gak usah fetch ulang
     try{
+      const endpoint = await getExistingSubscriptionEndpoint();
+      if(endpoint){
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(endpoint)}&nama=not.is.null&select=nama,whatsapp&limit=1`, {
+          headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+        });
+        const rows = await res.json();
+        if(Array.isArray(rows) && rows.length > 0){
+          existingContact = rows[0];
+          return;
+        }
+      }
+
+      // Fallback ke anon_id kalau belum ada subscription atau nggak ketemu lewat endpoint
       const anonId = getAnonId();
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?anon_id=eq.${anonId}&nama=not.is.null&select=nama,whatsapp&limit=1`, {
+      const res2 = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?anon_id=eq.${anonId}&nama=not.is.null&select=nama,whatsapp&limit=1`, {
         headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
       });
-      const rows = await res.json();
-      if(Array.isArray(rows) && rows.length > 0){
-        existingContact = rows[0];
+      const rows2 = await res2.json();
+      if(Array.isArray(rows2) && rows2.length > 0){
+        existingContact = rows2[0];
       }
     }catch(e){
       console.error('Gagal cek kontak lama:', e);
@@ -937,6 +965,8 @@
 
   // Simpen nama & WA ke subscription push yang udah ada (kalau udah subscribe),
   // atau simpen sementara di localStorage buat dipasang begitu user subscribe nanti.
+  // Match pakai endpoint ATAU anon_id, biar tetap nemu row yang bener walau anon_id
+  // di device ini udah beda dari yang dipakai pas subscribe pertama kali.
   async function saveContactData(contact){
     if(!contact || !contact.nama) return;
     localStorage.setItem('ajarin_pending_nama', contact.nama);
@@ -945,7 +975,15 @@
     const anonId = getAnonId();
     try{
       const { data: { session } } = await supabaseClient.auth.getSession();
-      const filter = session ? `user_id=eq.${session.user.id}` : `anon_id=eq.${anonId}`;
+      let filter;
+      if(session){
+        filter = `user_id=eq.${session.user.id}`;
+      }else{
+        const endpoint = await getExistingSubscriptionEndpoint();
+        filter = endpoint
+          ? `or=(endpoint.eq.${encodeURIComponent(endpoint)},anon_id.eq.${anonId})`
+          : `anon_id=eq.${anonId}`;
+      }
       await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?${filter}`, {
         method: 'PATCH',
         headers: {
