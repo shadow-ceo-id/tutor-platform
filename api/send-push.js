@@ -101,7 +101,8 @@ module.exports = async (req, res) => {
         const ok = await sendToSubscription(sub, {
           title: bc.judul,
           body: bc.isi,
-          url: '/index.html?chat=1',
+          url: `/index.html?chat=1&promo=${bc.id}`,
+          image: bc.gambar_url || undefined,
         });
         if (ok) { sentCount++; totalBroadcastSent++; }
       }
