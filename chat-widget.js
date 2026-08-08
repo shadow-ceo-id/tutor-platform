@@ -113,10 +113,37 @@
     document.body.appendChild(wrapper);
   }
 
+  // Ubah URL/path polos jadi <a> bisa diklik, escape teks lain, \n jadi <br>
+  function linkifyEscaped(text){
+    let escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    escaped = escaped.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:#1F8A76;text-decoration:underline;font-weight:600;">$1</a>');
+    escaped = escaped.replace(/(^|[\s(])(\/[a-zA-Z0-9_-]+\.html(?:\?[^\s)]*)?)/g, '$1<a href="$2" style="color:#1F8A76;text-decoration:underline;font-weight:600;">$2</a>');
+    return escaped.replace(/\n/g, '<br>');
+  }
+
   function wireEvents(supabaseClient){
     let chatHistory = [];
     let chatOpened = false;
     let userContext = null;
+    let displayLog = [];
+    let chatBodyRendered = false;
+
+    const STORAGE_KEY = 'ajarin_chat_state_' + window.location.pathname;
+    try{
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if(saved){
+        const state = JSON.parse(saved);
+        chatHistory = state.chatHistory || [];
+        chatOpened = !!state.chatOpened;
+        displayLog = state.displayLog || [];
+      }
+    }catch(e){ /* abaikan kalau corrupt */ }
+
+    function persistState(){
+      try{
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ chatHistory, chatOpened, displayLog }));
+      }catch(e){ /* storage penuh/disabled, abaikan */ }
+    }
 
     // Cek kalau ada yang login, biar chatbot bisa auto-lookup data mereka
     supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
@@ -136,15 +163,31 @@
     function addBot(text){
       const el = document.createElement('div');
       el.className = 'ajarin-msg ajarin-msg-bot';
-      el.textContent = text;
+      const html = linkifyEscaped(text);
+      el.innerHTML = html;
       body.appendChild(el);
       scrollBottom();
+      displayLog.push({ type: 'bot', html });
+      persistState();
     }
     function addUser(text){
       const el = document.createElement('div');
       el.className = 'ajarin-msg ajarin-msg-user';
       el.textContent = text;
       body.appendChild(el);
+      scrollBottom();
+      displayLog.push({ type: 'user', html: el.innerHTML });
+      persistState();
+    }
+    function renderDisplayLogOnce(){
+      if(chatBodyRendered || displayLog.length === 0) return;
+      displayLog.forEach(item => {
+        const el = document.createElement('div');
+        el.className = item.type === 'bot' ? 'ajarin-msg ajarin-msg-bot' : 'ajarin-msg ajarin-msg-user';
+        el.innerHTML = item.html;
+        body.appendChild(el);
+      });
+      chatBodyRendered = true;
       scrollBottom();
     }
     function showTyping(){
@@ -162,9 +205,13 @@
 
     fab.addEventListener('click', () => {
       overlay.classList.add('open');
-      if(!chatOpened){
+      if(chatOpened){
+        renderDisplayLogOnce();
+        setupPushNotification(supabaseClient, userContext);
+      }else{
         chatOpened = true;
         addBot('Halo Kak! 👋 Ada yang bisa dibantu seputar Ajarin?');
+        persistState();
         // Panggil langsung (bukan dibungkus proses lain) biar user-gesture dari klik ini
         // masih "hidup" sampai ke pushManager.subscribe().
         setupPushNotification(supabaseClient, userContext);
@@ -178,8 +225,8 @@
       const text = input.value.trim();
       if(!text) return;
 
-      addUser(text);
       chatHistory.push({ role: 'user', content: text });
+      addUser(text);
       input.value = '';
       showTyping();
 
@@ -198,6 +245,7 @@
         }
 
         chatHistory.push({ role: 'assistant', content: data.reply });
+        persistState();
 
         const contactMatch = data.reply.match(/<!--CONTACT_DATA\s*([\s\S]*?)-->/);
         if(contactMatch){
