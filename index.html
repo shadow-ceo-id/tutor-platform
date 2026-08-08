@@ -821,6 +821,40 @@
     const cleanText = reply.replace(/<!--META[\s\S]*?-->/g, '').trim();
     return { cleanText, category: match ? match[1] : null };
   }
+
+  function extractContactData(reply){
+    const match = reply.match(/<!--CONTACT_DATA\s*([\s\S]*?)-->/);
+    if(!match) return { afterContact: reply, contact: null };
+    let contact = null;
+    try{ contact = JSON.parse(match[1].trim()); }catch(e){ contact = null; }
+    const afterContact = reply.replace(match[0], '').trim();
+    return { afterContact, contact };
+  }
+
+  // Simpen nama & WA ke subscription push yang udah ada (kalau udah subscribe),
+  // atau simpen sementara di localStorage buat dipasang begitu user subscribe nanti.
+  async function saveContactData(contact){
+    if(!contact || !contact.nama) return;
+    localStorage.setItem('ajarin_pending_nama', contact.nama);
+    if(contact.whatsapp) localStorage.setItem('ajarin_pending_wa', contact.whatsapp);
+
+    const anonId = getAnonId();
+    try{
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const filter = session ? `user_id=eq.${session.user.id}` : `anon_id=eq.${anonId}`;
+      await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?${filter}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY
+        },
+        body: JSON.stringify({ nama: contact.nama, whatsapp: contact.whatsapp || null })
+      });
+    }catch(e){
+      console.error('Gagal simpan kontak ke subscription:', e);
+    }
+  }
  
   let notifiedForLead = false;
  
@@ -881,7 +915,9 @@
           anon_id: getAnonId(),
           endpoint: subJson.endpoint,
           p256dh: subJson.keys.p256dh,
-          auth_key: subJson.keys.auth
+          auth_key: subJson.keys.auth,
+          nama: localStorage.getItem('ajarin_pending_nama') || null,
+          whatsapp: localStorage.getItem('ajarin_pending_wa') || null
         })
       });
 
@@ -919,7 +955,8 @@
  
       chatHistory.push({ role: 'assistant', content: data.reply });
  
-      const { afterLead, lead } = extractLeadData(data.reply);
+      const { afterContact, contact } = extractContactData(data.reply);
+      const { afterLead, lead } = extractLeadData(afterContact);
       const { cleanText, category } = extractCategory(afterLead);
  
       addBotMessage(cleanText);
@@ -928,6 +965,10 @@
       if(lead && !notifiedForLead){
         notifiedForLead = true;
         saveLeadToSupabase(lead);
+      }
+
+      if(contact){
+        saveContactData(contact);
       }
     }catch(err){
       hideTyping();
