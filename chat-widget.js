@@ -175,7 +175,7 @@
     const input = document.getElementById('ajarinChatInput');
 
     function scrollBottom(){ body.scrollTop = body.scrollHeight; }
-    function addBot(text){
+    function addBotBubble(text){
       const el = document.createElement('div');
       el.className = 'ajarin-msg ajarin-msg-bot';
       const html = linkifyEscaped(text);
@@ -184,6 +184,14 @@
       scrollBottom();
       displayLog.push({ type: 'bot', html });
       persistState();
+    }
+    // Pecah jawaban panjang jadi beberapa bubble terpisah (per paragraf), beruntun dengan jeda dikit.
+    function addBot(text){
+      const chunks = text.split(/\n\s*\n+/).map(c => c.trim()).filter(c => c.length > 0);
+      if(chunks.length === 0) chunks.push(text);
+      chunks.forEach((chunk, i) => {
+        setTimeout(() => addBotBubble(chunk), i * 450);
+      });
     }
     function addUser(text){
       const el = document.createElement('div');
