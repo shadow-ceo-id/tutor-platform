@@ -984,8 +984,11 @@
           ? `or=(endpoint.eq.${encodeURIComponent(endpoint)},anon_id.eq.${anonId})`
           : `anon_id=eq.${anonId}`;
       }
+      // keepalive:true PENTING — biar request ini tetap jalan walau user langsung
+      // nutup/swipe-close app sesaat setelah bot bales (kejadian nyata di iOS PWA).
       await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?${filter}`, {
         method: 'PATCH',
+        keepalive: true,
         headers: {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_KEY,
