@@ -52,6 +52,14 @@
   <h1>Broadcast Promo</h1>
   <div class="subtitle">Kirim notifikasi promo ke user yang sudah izinkan push notification</div>
 
+  <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;">
+    <div>
+      <div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.02em;">Total Subscriber Push</div>
+      <div id="subscriberCount" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.8rem;color:var(--teal);">...</div>
+    </div>
+    <div style="font-size:0.78rem;color:var(--muted);text-align:right;" id="subscriberBreakdown"></div>
+  </div>
+
   <div class="card">
     <form id="broadcastForm">
       <label>Judul Notifikasi</label>
@@ -88,6 +96,16 @@
     if(!session){ window.location.href = 'auth.html'; return; }
     currentUser = session.user;
     loadHistory();
+    loadSubscriberCount();
+  }
+
+  async function loadSubscriberCount(){
+    const { count, data } = await supabaseClient.from('push_subscriptions').select('user_id', { count: 'exact' });
+    document.getElementById('subscriberCount').textContent = count ?? 0;
+
+    const loggedIn = (data || []).filter(s => s.user_id).length;
+    const anon = (count ?? 0) - loggedIn;
+    document.getElementById('subscriberBreakdown').innerHTML = loggedIn + ' login &middot; ' + anon + ' anonim';
   }
 
   async function loadHistory(){
