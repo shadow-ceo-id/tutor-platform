@@ -783,7 +783,8 @@
     }catch(e){ /* storage penuh/disabled, abaikan */ }
   }
 
-  function addBotMessage(text, isInitialGreeting){
+  // Satu bubble buat satu chunk teks — dipakai internal oleh addBotMessage
+  function addBotBubble(text){
     const body = document.getElementById('chatBody');
     const el = document.createElement('div');
     el.className = 'msg msg-bot';
@@ -793,23 +794,36 @@
     scrollChatToBottom();
     displayLog.push({ type: 'bot', html });
     persistChatState();
+  }
 
-    // Kalau chat lagi ditutup (misal user lagi baca-baca landing page),
-    // kasih badge + notifikasi browser biar user tau ada balasan baru.
-    if(!isChatOpen && !isInitialGreeting){
-      unreadCount++;
-      updateBadge();
-      if('Notification' in window && Notification.permission === 'granted' && document.hidden === false){
-        try{
-          const n = new Notification('Ajarin', {
-            body: text.length > 100 ? text.slice(0, 100) + '…' : text,
-            icon: undefined,
-            tag: 'ajarin-chat'
-          });
-          n.onclick = () => { window.focus(); openChat(); n.close(); };
-        }catch(e){ /* browser lama, abaikan */ }
-      }
-    }
+  // Pecah jawaban panjang jadi beberapa bubble terpisah (per paragraf),
+  // dikirim beruntun dengan jeda dikit biar kerasa natural kayak orang ngetik.
+  function addBotMessage(text, isInitialGreeting){
+    const chunks = text.split(/\n\s*\n+/).map(c => c.trim()).filter(c => c.length > 0);
+    if(chunks.length === 0) chunks.push(text);
+
+    chunks.forEach((chunk, i) => {
+      setTimeout(() => {
+        addBotBubble(chunk);
+        if(i === chunks.length - 1){
+          // Notifikasi/badge cuma sekali, pas bubble terakhir muncul
+          if(!isChatOpen && !isInitialGreeting){
+            unreadCount++;
+            updateBadge();
+            if('Notification' in window && Notification.permission === 'granted' && document.hidden === false){
+              try{
+                const n = new Notification('Ajarin', {
+                  body: text.length > 100 ? text.slice(0, 100) + '…' : text,
+                  icon: undefined,
+                  tag: 'ajarin-chat'
+                });
+                n.onclick = () => { window.focus(); openChat(); n.close(); };
+              }catch(e){ /* browser lama, abaikan */ }
+            }
+          }
+        }
+      }, i * 450);
+    });
   }
   function addUserMessage(text){
     const body = document.getElementById('chatBody');
