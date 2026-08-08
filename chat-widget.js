@@ -185,12 +185,22 @@
       displayLog.push({ type: 'bot', html });
       persistState();
     }
-    // Pecah jawaban panjang jadi beberapa bubble terpisah (per paragraf), beruntun dengan jeda dikit.
+    // Pecah jawaban panjang jadi beberapa bubble terpisah (per paragraf), beruntun dengan
+    // jeda + indikator "sedang mengetik" biar kerasa natural, kasih waktu user baca dulu.
+    const BUBBLE_GAP_MS = 3200;
+    const TYPING_DURATION_MS = 1100;
     function addBot(text){
       const chunks = text.split(/\n\s*\n+/).map(c => c.trim()).filter(c => c.length > 0);
       if(chunks.length === 0) chunks.push(text);
       chunks.forEach((chunk, i) => {
-        setTimeout(() => addBotBubble(chunk), i * 450);
+        const showAt = i * BUBBLE_GAP_MS;
+        if(i > 0){
+          setTimeout(() => showTyping(), Math.max(0, showAt - TYPING_DURATION_MS));
+        }
+        setTimeout(() => {
+          if(i > 0) hideTyping();
+          addBotBubble(chunk);
+        }, showAt);
       });
     }
     function addUser(text){
