@@ -198,6 +198,15 @@
         }
 
         chatHistory.push({ role: 'assistant', content: data.reply });
+
+        const contactMatch = data.reply.match(/<!--CONTACT_DATA\s*([\s\S]*?)-->/);
+        if(contactMatch){
+          try{
+            const contact = JSON.parse(contactMatch[1].trim());
+            saveContactData(supabaseClient, contact);
+          }catch(e){ /* abaikan kalau JSON-nya rusak */ }
+        }
+
         const cleanText = data.reply.replace(/<!--[\s\S]*?-->/g, '').trim();
         addBot(cleanText);
       }catch(err){
@@ -227,7 +236,29 @@
 
   // DEBUG_MODE: sementara true biar error keliatan lewat alert().
   // Matikan (set false) lagi setelah masalah subscribe ketemu & fix.
-  const DEBUG_MODE = true;
+  const DEBUG_MODE = false;
+
+  async function saveContactData(supabaseClient, contact){
+    if(!contact || !contact.nama) return;
+    localStorage.setItem('ajarin_pending_nama', contact.nama);
+    if(contact.whatsapp) localStorage.setItem('ajarin_pending_wa', contact.whatsapp);
+
+    try{
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const filter = session ? `user_id=eq.${session.user.id}` : `anon_id=eq.${getAnonId()}`;
+      await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?${filter}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY
+        },
+        body: JSON.stringify({ nama: contact.nama, whatsapp: contact.whatsapp || null })
+      });
+    }catch(e){
+      console.error('Gagal simpan kontak ke subscription:', e);
+    }
+  }
 
   async function setupPushNotification(supabaseClient, userContext){
     if(!('serviceWorker' in navigator) || !('PushManager' in window)){
@@ -278,7 +309,9 @@
           anon_id: getAnonId(),
           endpoint: subJson.endpoint,
           p256dh: subJson.keys.p256dh,
-          auth_key: subJson.keys.auth
+          auth_key: subJson.keys.auth,
+          nama: localStorage.getItem('ajarin_pending_nama') || null,
+          whatsapp: localStorage.getItem('ajarin_pending_wa') || null
         })
       });
 
